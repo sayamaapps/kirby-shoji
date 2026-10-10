@@ -36,10 +36,12 @@ final class Signer
 
     /**
      * Reads the secret from $directory/secret, creating it on first use
-     * (64 random hex characters, file mode 0600). If the directory is not
-     * writable, a value derived from the directory path is used and the
-     * problem is logged: addresses keep working, but the secret is guessable
-     * for someone who knows the server layout.
+     * (64 random hex characters, file mode 0600). If it cannot be stored,
+     * Shoji fails closed: a random secret for this request only, so no
+     * address verifies on the next request (the routes answer 404: no
+     * preview image, no player) and the problem is logged. A secret derived
+     * from something on the server would keep things working, but anyone who
+     * knows the server layout could then sign addresses.
      */
     public static function storedSecret(string $directory): string
     {
@@ -60,7 +62,7 @@ final class Signer
             return trim((string) @file_get_contents($file)) ?: $secret;
         }
         @unlink($file . '.tmp');
-        error_log('Shoji: cannot write ' . $file . ' — set shoji.secret or make the storage directory writable.');
-        return hash('sha256', 'shoji|' . $directory);
+        error_log('Shoji: cannot write ' . $file . ' — placeholders will not open until shoji.secret is set or the storage directory is writable.');
+        return $secret;
     }
 }

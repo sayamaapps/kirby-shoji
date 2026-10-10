@@ -13,11 +13,18 @@ use Shoji\Providers;
 use Shoji\Signer;
 use Shoji\Thumbs;
 
+ini_set('error_log', '/dev/null'); // the refused definitions below are logged on purpose
 $checks = 0;
 function expect($expected, $actual, string $what): void
 {
     global $checks;
     if ($expected !== $actual) { throw new RuntimeException($what . ': ' . var_export($actual, true)); }
+    $checks++;
+}
+function holds(bool $ok, string $what): void
+{
+    global $checks;
+    if (!$ok) { throw new RuntimeException($what); }
     $checks++;
 }
 /** Id the provider's `match` finds in $url, or null. */
@@ -104,6 +111,12 @@ try {
     expect('600', substr(sprintf('%o', fileperms($dir . '/secret')), -3), 'secret file mode 0600');
     unlink($dir . '/secret');
     rmdir($dir);
+    // Cannot be stored (a file where the directory should be; works as root too): fail closed.
+    $blocker = tempnam(sys_get_temp_dir(), 'shoji-blocker');
+    $ephemeral = @Signer::storedSecret($blocker . '/storage');
+    expect(64, strlen($ephemeral), 'unwritable: still a full-length secret');
+    holds($ephemeral !== @Signer::storedSecret($blocker . '/storage'), 'unwritable: a new random secret per call, nothing derivable');
+    unlink($blocker);
 
     // Image type from the bytes
     expect('jpg', Thumbs::sniff("\xFF\xD8\xFF\xE0rest"), 'JPEG');

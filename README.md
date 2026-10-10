@@ -216,7 +216,7 @@ composer install --ignore-platform-req=ext-gd   # Kirby is a dev dependency used
 composer test                                   # or: sh tests/run.sh
 ```
 
-The tests are plain PHP scripts (exit code 0 = pass). `KirbyTest.php` renders a page with every way content gets in and fails if a provider host appears in the HTML before the click; no test needs a network.
+The tests are plain PHP scripts (exit code 0 = pass). `KirbyTest.php` renders a page with every way content gets in and fails if a provider host appears in the HTML before the click; no test needs a network. `node --test tests/*.test.mjs` checks `shoji.js` against a small fake DOM: it opens only Shoji's own `/shoji/frame|script/…` addresses on the same host, so injected `data-shoji` attributes cannot load a `javascript:` frame or a foreign script.
 
 ## License
 

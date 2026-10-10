@@ -20,6 +20,28 @@
 
   var scripts = {}; // src -> list of callbacks while loading, true when done
 
+  /**
+   * The address only if it is one of Shoji's own on this host
+   * (/shoji/frame/… or /shoji/script/…). Someone who manages to inject
+   * HTML with data-shoji attributes (a sanitizer keeps data-* attributes)
+   * must not get a javascript: frame or a foreign script out of this file.
+   */
+  function own(value, kind) {
+    var url;
+    try {
+      url = new URL(value || '', window.location.href);
+    } catch (e) {
+      return null;
+    }
+    var path = new RegExp('/shoji/' + kind + '/[a-z][a-z0-9-]*/[A-Za-z0-9_-]+$');
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:') ||
+        url.hostname !== window.location.hostname ||
+        !path.test(url.pathname)) {
+      return null;
+    }
+    return url.href;
+  }
+
   function emit(box, name) {
     var event;
     var detail = { provider: box.getAttribute('data-shoji-provider') };
@@ -57,7 +79,7 @@
     document.head.appendChild(script);
   }
 
-  function insertFrame(box) {
+  function insertFrame(box, src) {
     var frame = document.createElement('iframe');
     var extra = box.getAttribute('data-shoji-frame-class');
     frame.className = extra ? 'shoji-frame ' + extra : 'shoji-frame';
@@ -92,27 +114,30 @@
     // cross-origin load event although the frame did navigate.
     frame.addEventListener('load', finish);
     window.setTimeout(finish, 5000);
-    frame.src = box.getAttribute('data-shoji-frame');
+    frame.src = src;
     box.appendChild(frame);
   }
 
   function open(box) {
-    if (box.hasAttribute('data-shoji-state') || !box.getAttribute('data-shoji-frame')) {
-      return;
+    var src = own(box.getAttribute('data-shoji-frame'), 'frame');
+    var scriptAttribute = box.getAttribute('data-shoji-script');
+    var script = scriptAttribute ? own(scriptAttribute, 'script') : null;
+    if (box.hasAttribute('data-shoji-state') || !src || (scriptAttribute && !script)) {
+      return false;
     }
     box.setAttribute('data-shoji-state', 'loading');
     box.classList.add('shoji-loading');
     emit(box, 'shoji:open');
 
-    var script = box.getAttribute('data-shoji-script');
     if (script) {
       loadScript(script, function () {
         emit(box, 'shoji:script');
-        insertFrame(box);
+        insertFrame(box, src);
       });
     } else {
-      insertFrame(box);
+      insertFrame(box, src);
     }
+    return true;
   }
 
   document.addEventListener('click', function (event) {
@@ -130,7 +155,10 @@
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       return;
     }
-    event.preventDefault();
-    open(box);
+    // Not opened (an address that is not Shoji's own): the button stays a
+    // plain link to the site's /shoji/go/… address.
+    if (open(box)) {
+      event.preventDefault();
+    }
   });
 })();
