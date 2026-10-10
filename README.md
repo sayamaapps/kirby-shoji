@@ -8,7 +8,7 @@ Click-to-load for [Kirby CMS](https://getkirby.com) 5: YouTube, Vimeo and Digist
 - **Preview images from your own server.** The server fetches the image once, keeps it in `storage/shoji/`, and serves it. The visitor's browser never asks YouTube or Vimeo.
 - **Nothing is remembered.** No cookie, no browser storage: every page asks again. (Version 1 deliberately does not store consent on the visitor's device.)
 - **Works without JavaScript.** The button is a real link; without the script it leads to the video on the provider's site.
-- **Content Security Policy friendly.** One external, deferred script from Kirby's plugin assets. No inline script, no inline event handler, no style attribute.
+- **Content Security Policy friendly.** One external, deferred script from Kirby's plugin assets. No inline script, no inline event handler, no style attribute. See [Content Security Policy](#content-security-policy) for the directives.
 - **Takes over Kirby's video block and `(video:)` tag.** A YouTube or Vimeo address pasted in the Panel becomes a placeholder by itself.
 - **Providers as a list.** YouTube (via `youtube-nocookie.com`), Vimeo (with `dnt=1`), Digistore24 (order form, plus its script); add your own in the configuration.
 - **Unstyled.** Classes `shoji-*` only; the look belongs to the site.
@@ -190,6 +190,18 @@ A provider is a list entry; built-in ones are in [`src/Providers.php`](src/Provi
 | `allow` | Optional: iframe features (`autoplay; fullscreen`). Each gets `*`, because the iframe is redirected from Shoji's own address. |
 
 Address templates know `{id}`, `{name}` (a parameter) and `{/name}` (a slash plus the parameter, or nothing). Parameters no placeholder uses become the query string. Templates must produce `https` addresses.
+
+## Content Security Policy
+
+Shoji needs no `'unsafe-inline'`, but the policy must allow the first step of each redirect, which is the site itself:
+
+| Directive | Needs | Why |
+|---|---|---|
+| `script-src` | `'self'` plus each provider script host (Digistore24: `https://www.digistore24-scripts.com`) | `shoji.js` comes from `/media/plugins/…`; `/shoji/script/…` redirects to the provider script, and the policy checks the target, too |
+| `frame-src` | `'self'` plus each provider frame host (`https://www.youtube-nocookie.com`, `https://player.vimeo.com`, `https://www.digistore24.com` …) | the iframe starts at `/shoji/frame/…` on your site and is redirected; **without `'self'` nothing opens** |
+| `img-src` | `'self'` | preview images come from `/shoji/thumb/…` |
+
+Test with `Content-Security-Policy-Report-Only` first: a click on every kind of placeholder must not produce a report.
 
 ## How it works
 
