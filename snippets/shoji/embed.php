@@ -24,6 +24,7 @@
  * @var string|null       $label   button text instead of the default
  * @var string|false|null $note    note text instead of the default; false = none
  * @var string|null       $class   extra classes on the container
+ * @var string|null       $buttonClass extra classes on the button
  * @var string|null       $frameClass extra classes on the iframe
  * @var array|null        $attrs   extra container attributes (data-*, aria-*, id only)
  * @var bool|null         $open    true: the content right away, without placeholder
@@ -83,7 +84,7 @@ $size = $embed->size();
   <?php if ($thumb) : ?>
   <img class="shoji-thumb" src="<?= esc($thumb) ?>" alt="<?= esc($embed->title !== null ? $t('thumbAlt', ['title' => $embed->title]) : $t('thumbAltUntitled', $names)) ?>"<?php if ($size) : ?> width="<?= $size[0] ?>" height="<?= $size[1] ?>"<?php endif ?> loading="lazy" decoding="async">
   <?php endif ?>
-  <a class="shoji-button" href="<?= esc($embed->linkUrl()) ?>" rel="nofollow"><?= esc($label) ?></a>
+  <a class="<?= esc(trim('shoji-button ' . ($buttonClass ?? ''))) ?>" href="<?= esc($embed->linkUrl()) ?>" rel="nofollow"><?= esc($label) ?></a>
   <?php if ($note !== false && $note !== '') : ?>
   <p class="shoji-note"><?= esc($note) ?><?php if ($privacy) : ?> <a class="shoji-privacy" href="<?= esc($privacy) ?>"><?= esc($t('privacy')) ?></a><?php endif ?></p>
   <?php endif ?>

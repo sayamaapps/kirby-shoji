@@ -104,7 +104,7 @@ try {
 <!doctype html><html><body>
 <?php snippet('shoji/embed', ['url' => $page->yt()->value(), 'title' => $page->ytTitle()->value()]) ?>
 <?php snippet('shoji/embed', ['provider' => 'vimeo', 'id' => '76979871']) ?>
-<?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'params' => ['form' => '78901', 'aff' => 'partner'], 'label' => 'Buy now', 'frameClass' => 'ds24_payIFrame', 'attrs' => ['data-product' => '123456', 'onclick' => 'evil()']]) ?>
+<?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'params' => ['form' => '78901', 'aff' => 'partner'], 'label' => 'Buy now', 'buttonClass' => 'buy-btn', 'frameClass' => 'ds24_payIFrame', 'attrs' => ['data-product' => '123456', 'onclick' => 'evil()']]) ?>
 <?php snippet('shoji/embed', ['provider' => 'youtube', 'id' => 'bad"id<x>']) ?>
 <?= $page->text()->kirbytext() ?>
 <?= $page->blocks()->toBlocks() ?>
@@ -148,6 +148,7 @@ PHP);
     holds(str_contains($html, 'Play video: &quot;&gt;&lt;script&gt;'), 'button names the title (English default)');
     holds(str_contains($html, 'The video is loaded from YouTube only after you click. Google then learns your IP address.'), 'note names provider and company');
     holds(str_contains($html, '<a class="shoji-privacy" href="https://site.example/datenschutz">Privacy policy</a>'), 'privacy link found automatically');
+    holds(str_contains($html, 'class="shoji-button buy-btn"'), 'extra button class');
     holds(str_contains($html, '>Buy now</a>'), 'own button label');
     holds(str_contains($html, 'data-product="123456"'), 'data attribute passed through');
     holds(str_contains($html, 'data-shoji-frame-class="ds24_payIFrame"'), 'frame class passed on');

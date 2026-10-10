@@ -70,6 +70,7 @@ In the Panel, the video block and `(video: https://youtu.be/…)` need nothing: 
 | `label` | Button text instead of the default. |
 | `note` | Note text instead of the default; `false` for none. |
 | `class` | Extra classes on the container. |
+| `buttonClass` | Extra classes on the button. |
 | `frameClass` | Extra classes on the iframe (some providers' scripts look for one). |
 | `attrs` | Extra container attributes; only `data-*`, `aria-*` and `id` are taken. |
 | `open` | `true`: the content right away, without placeholder — for a site that remembers consent itself. The addresses are still Shoji's own. |
