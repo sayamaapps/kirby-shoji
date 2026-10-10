@@ -1,0 +1,201 @@
+<?php
+
+use Kirby\Cms\App;
+use Kirby\Cms\Html;
+use Kirby\Http\Response;
+use Kirby\Text\KirbyTag;
+
+require_once __DIR__ . '/src/I18n.php';
+require_once __DIR__ . '/src/Options.php';
+require_once __DIR__ . '/src/Signer.php';
+require_once __DIR__ . '/src/Providers.php';
+require_once __DIR__ . '/src/Embed.php';
+require_once __DIR__ . '/src/Http.php';
+require_once __DIR__ . '/src/Thumbs.php';
+
+use Shoji\Embed;
+use Shoji\I18n;
+use Shoji\Options;
+use Shoji\Thumbs;
+
+/**
+ * Shoji (障子, the paper sliding screen: you see the outline, the outside
+ * comes in only when you slide it open) — third-party content behind a
+ * placeholder until the visitor clicks. Off by default: without
+ * `'shoji.active' => true` the snippet prints a plain link, the video block
+ * and the (video:) tag behave exactly like Kirby's, and the routes answer 404.
+ *
+ * Nothing in the page names the provider's host: the preview image, the
+ * iframe, an extra script and the plain link all point to this site
+ * (/shoji/…, signed) and are redirected or served from there.
+ *
+ * Defaults are passed as fallback values directly at each option call, NOT
+ * in an 'options' block (Kirby would file them under sayamaapps.shoji.active
+ * otherwise).
+ */
+
+/** Reads `shoji.<key>`. Also meant for site snippets with their own markup. */
+function shoji_option(string $key, mixed $default = null): mixed
+{
+    return Options::get(App::instance(), $key, $default);
+}
+
+/**
+ * The embed for a pasted address (`shoji_embed('https://youtu.be/…')`) or a
+ * provider and id (`shoji_embed('youtube', 'dQw4w9WgXcQ')`); null if nothing
+ * matches or the id is invalid. For sites that build their own markup.
+ */
+function shoji_embed(string $urlOrProvider, ?string $id = null, array $params = [], ?string $title = null): ?Embed
+{
+    $kirby = App::instance();
+    return $id === null
+        ? Embed::fromUrl($kirby, $urlOrProvider, $params, $title)
+        : Embed::make($kirby, $urlOrProvider, $id, $params, $title);
+}
+
+/** Language and `shoji.texts` for this request. Snippets call it before printing text. */
+function shoji_i18n(): void
+{
+    $kirby = App::instance();
+    I18n::setLanguage(Options::language($kirby));
+    I18n::setOverrides(Options::get($kirby, 'texts'));
+}
+
+/** Address of assets/shoji.js (Kirby serves plugin assets from /media/plugins/…, with a version hash). */
+function shoji_script_url(): ?string
+{
+    return App::instance()->plugin('sayamaapps/shoji')?->asset('shoji.js')?->url();
+}
+
+/**
+ * The <script> tag for shoji.js, once per page: the first placeholder
+ * prints it, later ones print nothing. External and deferred, so a Content
+ * Security Policy needs no 'unsafe-inline'. `'shoji.script' => false` turns
+ * it off for sites that bundle the file themselves.
+ */
+function shoji_script_tag(): string
+{
+    static $printed = null;
+    $printed ??= new WeakMap();
+    $kirby = App::instance();
+    if (isset($printed[$kirby]) || shoji_option('script', true) === false || ($url = shoji_script_url()) === null) {
+        return '';
+    }
+    $printed[$kirby] = true;
+    return '<script src="' . esc($url) . '" defer></script>';
+}
+
+/** The route behind /shoji/<kind>/<provider>/<id>. */
+function shoji_route(string $kind, string $provider, string $id): Response|false
+{
+    $kirby = App::instance();
+    if (!Options::active($kirby)) {
+        return false; // the module does not even reveal itself: Kirby's 404
+    }
+    $notFound = fn () => new Response('Not found', 'text/plain', 404, ['X-Robots-Tag' => 'noindex', 'Cache-Control' => 'no-store']);
+
+    $signature = get('s');
+    $encoded = $kind === 'frame' || $kind === 'go' ? get('p', '') : '';
+    if (!is_string($signature) || !is_string($encoded)) {
+        return $notFound();
+    }
+    $embed = Embed::make($kirby, $provider, $id, Embed::decodeParams($encoded));
+    if ($embed === null || !Embed::signer($kirby)->verify($signature, $kind, $provider, $id, $encoded)) {
+        return $notFound();
+    }
+
+    if ($kind === 'thumb') {
+        $image = $embed->hasThumbnail() ? (new Thumbs(Options::directory($kirby) . '/thumbs'))->get($embed) : null;
+        if ($image === null) {
+            // A blank image in the right proportions instead of a broken one.
+            [$width, $height] = $embed->size() ?? [16, 9];
+            return new Response(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="' . $width . '" height="' . $height . '" viewBox="0 0 ' . $width . ' ' . $height . '"/>',
+                'image/svg+xml',
+                200,
+                ['Cache-Control' => 'public, max-age=3600', 'X-Content-Type-Options' => 'nosniff']
+            );
+        }
+        return new Response((string) file_get_contents($image['file']), $image['type'], 200, [
+            'Cache-Control'          => 'public, max-age=' . Thumbs::MAX_AGE,
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    $target = $embed->target($kind);
+    if ($target === null) {
+        return $notFound();
+    }
+    // no-store: parameters (an affiliate id, say) may differ on the next click.
+    // No Referrer-Policy here: YouTube refuses to play without a referrer.
+    return new Response('', null, 302, [
+        'Location'      => $target,
+        'Cache-Control' => 'no-store',
+        'X-Robots-Tag'  => 'noindex, nofollow',
+    ]);
+}
+
+/** Kirby's own (video:) tag and video block, for everything Shoji does not take over. */
+function shoji_core_tag(string $name): ?array
+{
+    static $tags = null;
+    $tags ??= require App::instance()->root('kirby') . '/config/tags.php';
+    return $tags[$name] ?? null;
+}
+
+$shojiTranslations = [];
+foreach (I18n::LANGUAGES as $shojiLanguage) {
+    foreach (I18n::table($shojiLanguage) as $shojiKey => $shojiText) {
+        $shojiTranslations[$shojiLanguage]['shoji.' . $shojiKey] = $shojiText;
+    }
+}
+unset($shojiLanguage, $shojiKey, $shojiText);
+
+App::plugin('sayamaapps/shoji', [
+    // The visitor-facing strings, also usable as t('shoji.<key>').
+    'translations' => $shojiTranslations,
+
+    /**
+     * The placeholder (snippets/shoji/embed.php) and the video block.
+     * A site with its own markup creates site/snippets/shoji/embed.php —
+     * Kirby looks there first.
+     */
+    'snippets' => [
+        'shoji/embed'  => __DIR__ . '/snippets/shoji/embed.php',
+        'blocks/video' => __DIR__ . '/snippets/blocks/video.php',
+    ],
+
+    'routes' => [
+        [
+            'pattern' => 'shoji/(thumb|frame|script|go)/(:any)/(:any)',
+            'method'  => 'GET',
+            'action'  => fn (string $kind, string $provider, string $id) => shoji_route($kind, $provider, $id),
+        ],
+    ],
+
+    /**
+     * (video: …) — a YouTube or Vimeo address becomes a placeholder; a file
+     * from the page, anything else, or Shoji switched off: Kirby's own tag.
+     * The attribute list is Kirby's, so existing tags keep parsing.
+     */
+    'tags' => [
+        'video' => [
+            'attr' => [
+                'autoplay', 'caption', 'controls', 'class', 'disablepictureinpicture', 'height',
+                'loop', 'muted', 'playsinline', 'poster', 'preload', 'style', 'width',
+            ],
+            'html' => function (KirbyTag $tag): string {
+                $kirby = $tag->kirby();
+                $embed = Options::active($kirby) ? Embed::fromUrl($kirby, (string) $tag->value) : null;
+                if ($embed === null) {
+                    return shoji_core_tag('video')['html']($tag);
+                }
+                return Html::figure(
+                    [$kirby->snippet('shoji/embed', ['embed' => $embed], true)],
+                    $tag->caption,
+                    ['class' => $tag->class ?? 'video', 'style' => $tag->style]
+                );
+            },
+        ],
+    ],
+]);

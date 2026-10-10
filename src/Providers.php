@@ -1,0 +1,229 @@
+<?php
+
+namespace Shoji;
+
+use Closure;
+
+/**
+ * The providers Shoji knows: how to recognise an address, what a valid id
+ * looks like, and where the embed, the plain link, an extra script and the
+ * preview image live.
+ *
+ * A definition:
+ *
+ *   'name'       => 'YouTube',             shown in the note and the button
+ *   'company'    => 'Google',              who learns the visitor's IP address
+ *   'kind'       => 'video',               'video' | 'form' | 'content' (picks the texts)
+ *   'id'         => '/^…$/',               a valid id, checked on render and in every route
+ *   'match'      => '~…(id)…~i',           optional: finds the id in a pasted address
+ *   'embed'      => 'https://…/{id}',      the iframe address
+ *   'link'       => 'https://…/{id}',      optional: the plain link (without JavaScript), default: embed
+ *   'script'     => 'https://….js',        optional: loaded before the iframe
+ *   'thumbnails' => ['https://…/{id}.jpg'] optional: preview image candidates, or a
+ *                                          closure fn (string $id, Closure $fetch): array
+ *   'size'       => [1280, 720],           optional: width/height of the preview image
+ *   'allow'      => 'autoplay; fullscreen' optional: features the iframe may use
+ *
+ * Address templates know three placeholders: {id}, {name} (the value of the
+ * parameter `name`, empty if missing) and {/name} (a slash plus the value, or
+ * nothing). Parameters no placeholder uses are appended as the query string.
+ * Templates must produce an https address; anything else is refused.
+ *
+ * `shoji.providers` adds providers, changes single fields of a built-in one,
+ * or removes one with `false`:
+ *
+ *   'shoji.providers' => [
+ *       'vimeo'   => false,
+ *       'youtube' => ['embed' => 'https://www.youtube-nocookie.com/embed/{id}?autoplay=1&rel=0'],
+ *       'spotify' => ['name' => 'Spotify', …],
+ *   ]
+ */
+final class Providers
+{
+    public const NAME = '/^[a-z][a-z0-9-]{0,31}$/';
+
+    /** Every id, whatever the provider says, must also be safe as a path segment and file name. */
+    public const SAFE_ID = '/^[A-Za-z0-9_-]{1,64}$/';
+
+    public const PARAM_NAME = '/^[A-Za-z][A-Za-z0-9_]{0,31}$/';
+    public const PARAM_VALUE_MAX = 200;
+
+    /** @return array<string, array> */
+    public static function defaults(): array
+    {
+        return [
+            'youtube' => [
+                'name'       => 'YouTube',
+                'company'    => 'Google',
+                'kind'       => 'video',
+                'id'         => '/^[A-Za-z0-9_-]{11}$/',
+                'match'      => '~(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:[^#]*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})~i',
+                'embed'      => 'https://www.youtube-nocookie.com/embed/{id}?autoplay=1',
+                'link'       => 'https://www.youtube.com/watch?v={id}',
+                'thumbnails' => [
+                    'https://img.youtube.com/vi/{id}/maxresdefault.jpg',
+                    'https://img.youtube.com/vi/{id}/hqdefault.jpg',
+                ],
+                'size'       => [1280, 720],
+                'allow'      => 'autoplay; encrypted-media; fullscreen; picture-in-picture',
+            ],
+            'vimeo' => [
+                'name'       => 'Vimeo',
+                'company'    => 'Vimeo',
+                'kind'       => 'video',
+                'id'         => '/^\d{6,12}$/',
+                'match'      => '~vimeo\.com/(?:video/|channels/[\w-]+/|groups/[\w-]+/videos/)?(\d{6,12})(?![\w/])~i',
+                'embed'      => 'https://player.vimeo.com/video/{id}?autoplay=1&dnt=1',
+                'link'       => 'https://vimeo.com/{id}',
+                // Vimeo has no fixed image address; its oEmbed answer names one.
+                'thumbnails' => static function (string $id, Closure $fetch): array {
+                    [$status, $body] = $fetch('https://vimeo.com/api/oembed.json?width=1280&url=' . rawurlencode('https://vimeo.com/' . $id));
+                    $data = $status === 200 ? json_decode($body, true) : null;
+                    $url = is_array($data) ? ($data['thumbnail_url'] ?? null) : null;
+                    return is_string($url) && str_starts_with($url, 'https://') ? [$url] : [];
+                },
+                'size'       => [1280, 720],
+                'allow'      => 'autoplay; fullscreen; picture-in-picture',
+            ],
+            'digistore' => [
+                'name'    => 'Digistore24',
+                'company' => 'Digistore24',
+                'kind'    => 'form',
+                'id'      => '/^\d{1,10}$/',
+                'match'   => '~digistore24\.com/(?:product|redir)/(\d{1,10})(?!\d)~i',
+                // {/form}: the order form id, as in …/product/123456/78901
+                'embed'   => 'https://www.digistore24.com/product/{id}{/form}',
+                'script'  => 'https://www.digistore24-scripts.com/service/digistore.js',
+                'allow'   => 'payment',
+            ],
+        ];
+    }
+
+    /**
+     * Built-in providers merged with `shoji.providers`. Invalid definitions
+     * are dropped and logged, so a typo in the configuration never renders a
+     * broken embed.
+     *
+     * @return array<string, array>
+     */
+    public static function all(mixed $configured = null): array
+    {
+        $providers = self::defaults();
+        foreach (is_array($configured) ? $configured : [] as $name => $definition) {
+            if ($definition === false) {
+                unset($providers[$name]);
+                continue;
+            }
+            if (!is_string($name) || !preg_match(self::NAME, $name) || !is_array($definition)) {
+                error_log('Shoji: ignoring provider ' . var_export($name, true) . ' (name must match ' . self::NAME . ', definition must be an array)');
+                continue;
+            }
+            $providers[$name] = array_replace($providers[$name] ?? [], $definition);
+        }
+        foreach ($providers as $name => $definition) {
+            if (($problem = self::problem($definition)) !== null) {
+                error_log("Shoji: ignoring provider $name: $problem");
+                unset($providers[$name]);
+            }
+        }
+        return $providers;
+    }
+
+    /** What is wrong with a definition, or null. */
+    public static function problem(array $definition): ?string
+    {
+        foreach (['name', 'company', 'id', 'embed'] as $key) {
+            if (!is_string($definition[$key] ?? null) || trim($definition[$key]) === '') {
+                return "'$key' is missing";
+            }
+        }
+        if (@preg_match($definition['id'], '') === false) {
+            return "'id' is no valid regular expression";
+        }
+        if (isset($definition['match']) && (!is_string($definition['match']) || @preg_match($definition['match'], '') === false)) {
+            return "'match' is no valid regular expression";
+        }
+        foreach (['embed', 'link', 'script'] as $key) {
+            if (isset($definition[$key]) && (!is_string($definition[$key]) || !str_starts_with($definition[$key], 'https://'))) {
+                return "'$key' must be an https address";
+            }
+        }
+        $thumbnails = $definition['thumbnails'] ?? [];
+        if (!$thumbnails instanceof Closure && !is_array($thumbnails)) {
+            return "'thumbnails' must be a list or a closure";
+        }
+        return null;
+    }
+
+    /** True if $id is valid for the provider and safe as a path segment. */
+    public static function validId(array $definition, string $id): bool
+    {
+        return preg_match(self::SAFE_ID, $id) === 1 && preg_match($definition['id'], $id) === 1;
+    }
+
+    /**
+     * Keeps only well-formed parameters: names like `form` or `aff`, scalar
+     * values up to 200 characters. Sorted by name, so the signature does not
+     * depend on the order a template passed them in.
+     *
+     * @return array<string,string>
+     */
+    public static function params(mixed $params): array
+    {
+        $clean = [];
+        foreach (is_array($params) ? $params : [] as $name => $value) {
+            if (!is_string($name) || !preg_match(self::PARAM_NAME, $name)) {
+                continue;
+            }
+            if (is_int($value) || is_float($value)) {
+                $value = (string) $value;
+            }
+            if (!is_string($value) || $value === '' || strlen($value) > self::PARAM_VALUE_MAX) {
+                continue;
+            }
+            $clean[$name] = $value;
+        }
+        ksort($clean);
+        return $clean;
+    }
+
+    /**
+     * Fills an address template. {name} and {/name} only take values that
+     * are safe as a path segment; others count as missing. Unused parameters
+     * become the query string.
+     */
+    public static function fill(string $template, string $id, array $params): string
+    {
+        $used = [];
+        $url = preg_replace_callback('~\{(/?)([A-Za-z][A-Za-z0-9_]*)\}~', function (array $m) use ($id, $params, &$used) {
+            [, $slash, $name] = $m;
+            if ($name === 'id') {
+                return $slash . rawurlencode($id);
+            }
+            $used[$name] = true;
+            $value = $params[$name] ?? null;
+            if (!is_string($value) || !preg_match(self::SAFE_ID, $value)) {
+                return '';
+            }
+            return $slash . $value;
+        }, $template);
+        $rest = array_diff_key($params, $used);
+        if ($rest !== []) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($rest, '', '&', PHP_QUERY_RFC3986);
+        }
+        return $url;
+    }
+
+    /**
+     * Value of the iframe `allow` attribute. The iframe first loads Shoji's
+     * own /shoji/frame/… address and is redirected to the provider from
+     * there, so the default allowlist ('src' = our own origin) would not
+     * cover the provider: every feature gets `*`.
+     */
+    public static function allow(array $definition): string
+    {
+        $features = array_filter(array_map('trim', explode(';', (string) ($definition['allow'] ?? ''))));
+        $features = array_filter($features, fn (string $f) => preg_match('/^[a-z-]+$/', $f) === 1);
+        return implode('; ', array_map(fn (string $f) => $f . ' *', $features));
+    }
+}
