@@ -13,12 +13,15 @@ use Closure;
  *
  *   'name'       => 'YouTube',             shown in the note and the button
  *   'company'    => 'Google',              who learns the visitor's IP address
- *   'kind'       => 'video',               'video' | 'form' | 'content' (picks the texts)
+ *   'kind'       => 'video',               'video' | 'form' | 'content' | 'html' (picks the texts)
  *   'id'         => '/^…$/',               a valid id, checked on render and in every route
  *   'match'      => '~…(id)…~i',           optional: finds the id in a pasted address
- *   'embed'      => 'https://…/{id}',      the iframe address
+ *   'embed'      => 'https://…/{id}',      the iframe address (not for kind 'html')
+ *   'snippet'    => 'forms/{id}',          kind 'html' only: the site's Kirby snippet with the markup
  *   'link'       => 'https://…/{id}',      optional: the plain link (without JavaScript), default: embed
- *   'script'     => 'https://….js',        optional: loaded before the iframe
+ *   'script'     => 'https://….js',        optional: loaded before the iframe (kind 'html': after the
+ *                                          markup is in the page); one address or a list, in order
+ *   'style'      => 'https://….css',       optional, kind 'html': stylesheets, one address or a list
  *   'thumbnails' => ['https://…/{id}.jpg'] optional: preview image candidates, or a
  *                                          closure fn (string $id, Closure $fetch): array
  *   'size'       => [1280, 720],           optional: width/height of the preview image
@@ -46,6 +49,15 @@ final class Providers
     public const SAFE_ID = '/^[A-Za-z0-9_-]{1,64}$/';
 
     public const PARAM_NAME = '/^[A-Za-z][A-Za-z0-9_]{0,31}$/';
+
+    /** Kinds a definition may name. 'html': the site's own markup, inserted after the click. */
+    public const KINDS = ['video', 'form', 'content', 'html'];
+
+    /** A snippet name after {id} is filled: path segments, no dots, so nothing outside the snippet roots. */
+    public const SNIPPET = '~^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$~';
+
+    /** At most this many scripts and stylesheets per provider (the index travels in the address). */
+    public const ASSETS_MAX = 10;
     public const PARAM_VALUE_MAX = 200;
 
     /** @return array<string, array> */
@@ -132,7 +144,8 @@ final class Providers
     /** What is wrong with a definition, or null. */
     public static function problem(array $definition): ?string
     {
-        foreach (['name', 'company', 'id', 'embed'] as $key) {
+        $html = ($definition['kind'] ?? null) === 'html';
+        foreach (['name', 'company', 'id', $html ? 'snippet' : 'embed'] as $key) {
             if (!is_string($definition[$key] ?? null) || trim($definition[$key]) === '') {
                 return "'$key' is missing";
             }
@@ -143,9 +156,18 @@ final class Providers
         if (isset($definition['match']) && (!is_string($definition['match']) || @preg_match($definition['match'], '') === false)) {
             return "'match' is no valid regular expression";
         }
-        foreach (['embed', 'link', 'script'] as $key) {
+        if ($html && !preg_match(self::SNIPPET, str_replace('{id}', 'id', $definition['snippet']))) {
+            return "'snippet' must be a snippet name like 'forms/{id}'";
+        }
+        foreach (['embed', 'link'] as $key) {
             if (isset($definition[$key]) && (!is_string($definition[$key]) || !str_starts_with($definition[$key], 'https://'))) {
                 return "'$key' must be an https address";
+            }
+        }
+        foreach (['script', 'style'] as $key) {
+            $list = self::assets($definition, $key);
+            if ($list === null || count($list) > self::ASSETS_MAX) {
+                return "'$key' must be an https address or a list of up to " . self::ASSETS_MAX;
             }
         }
         $thumbnails = $definition['thumbnails'] ?? [];
@@ -153,6 +175,27 @@ final class Providers
             return "'thumbnails' must be a list or a closure";
         }
         return null;
+    }
+
+    /**
+     * The provider's scripts or stylesheets (`script`, `style`) as a list,
+     * in order; null if the field is not an https address or a list of them.
+     *
+     * @return list<string>|null
+     */
+    public static function assets(array $definition, string $key): ?array
+    {
+        $value = $definition[$key] ?? [];
+        $list = is_string($value) ? [$value] : $value;
+        if (!is_array($list) || !array_is_list($list)) {
+            return null;
+        }
+        foreach ($list as $url) {
+            if (!is_string($url) || !str_starts_with($url, 'https://')) {
+                return null;
+            }
+        }
+        return $list;
     }
 
     /** True if $id is valid for the provider and safe as a path segment. */

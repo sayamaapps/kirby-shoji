@@ -1,16 +1,17 @@
 # Shoji
 
-Click-to-load for [Kirby CMS](https://getkirby.com) 5: YouTube, Vimeo and Digistore24 stay behind a placeholder until the visitor clicks.
+Click-to-load for [Kirby CMS](https://getkirby.com) 5: YouTube, Vimeo, Digistore24 and HTML forms such as Brevo's stay behind a placeholder until the visitor clicks.
 
 *Shoji* (障子) is the Japanese paper sliding screen: you see the outline of what is outside, and the outside only comes in when you slide it open. The plugin shows a preview image, a button and a short note; the video player or the order form loads after the click, not before.
 
-- **No third-party host in the page.** Before the click the HTML names no provider at all, not even in a `data-` attribute. The preview image, the iframe address, an extra provider script and the plain link all point to this site (`/shoji/…`) and are served or redirected from there. A checker that reads the HTML (and a visitor's browser) sees only your own server.
+- **No third-party host in the page.** Before the click the HTML names no provider at all, not even in a `data-` attribute. The preview image, the iframe address, the markup of an HTML form, the provider's scripts and stylesheets and the plain link all point to this site (`/shoji/…`) and are served or redirected from there. A checker that reads the HTML (and a visitor's browser) sees only your own server.
 - **Preview images from your own server.** The server fetches the image once, keeps it in `storage/shoji/`, and serves it. The visitor's browser never asks YouTube or Vimeo.
 - **Nothing is remembered.** No cookie, no browser storage: every page asks again. (Version 1 deliberately does not store consent on the visitor's device.)
 - **Works without JavaScript.** The button is a real link; without the script it leads to the video on the provider's site.
 - **Content Security Policy friendly.** One external, deferred script from Kirby's plugin assets. No inline script, no inline event handler, no style attribute. See [Content Security Policy](#content-security-policy) for the directives.
 - **Takes over Kirby's video block and `(video:)` tag.** A YouTube or Vimeo address pasted in the Panel becomes a placeholder by itself.
 - **Providers as a list.** YouTube (via `youtube-nocookie.com`), Vimeo (with `dnt=1`), Digistore24 (order form, plus its script); add your own in the configuration.
+- **HTML forms, too.** A form whose markup the site keeps itself (a Brevo sign-up form with a hidden campaign field, say) comes into the page after the click, with the provider's scripts and stylesheets. See [HTML forms](#html-forms-kind-html).
 - **Unstyled.** Classes `shoji-*` only; the look belongs to the site.
 - **English and German.** Texts follow the site's language and can be changed one by one (du/Sie).
 
@@ -65,7 +66,7 @@ In the Panel, the video block and `(video: https://youtu.be/…)` need nothing: 
 |---|---|
 | `url` | A pasted address (YouTube, Vimeo, Digistore24 product). Or: |
 | `provider` + `id` | Provider name and id. |
-| `params` | Extra parameters for the provider address, e.g. Digistore24's order form (`form`) and affiliate (`aff`). Names `[A-Za-z][A-Za-z0-9_]*`, values up to 200 characters. They travel signed in Shoji's own address, so nobody can change them in a copied link. |
+| `params` | Extra parameters for the provider address, e.g. Digistore24's order form (`form`) and affiliate (`aff`); for kind `html` they reach the site's snippet as `$params`. Names `[A-Za-z][A-Za-z0-9_]*`, values up to 200 characters. They travel signed in Shoji's own address, so nobody can change them in a copied link. |
 | `title` | Title of the content: alt text of the preview image, button text, iframe title. |
 | `label` | Button text instead of the default. |
 | `note` | Note text instead of the default; `false` for none. |
@@ -73,7 +74,7 @@ In the Panel, the video block and `(video: https://youtu.be/…)` need nothing: 
 | `buttonClass` | Extra classes on the button. |
 | `frameClass` | Extra classes on the iframe (some providers' scripts look for one). |
 | `attrs` | Extra container attributes; only `data-*`, `aria-*` and `id` are taken. |
-| `open` | `true`: the content right away, without placeholder — for a site that remembers consent itself. The addresses are still Shoji's own. |
+| `open` | `true`: the content right away, without placeholder — for a site that remembers consent itself. The addresses are still Shoji's own (kind `html`: the snippet's markup is printed as it is, so its form address names the provider). |
 
 An invalid id or an unknown address prints nothing.
 
@@ -89,7 +90,7 @@ An invalid id or an unknown address prints nothing.
 <script src="https://example.com/media/plugins/sayamaapps/shoji/…/shoji.js" defer></script>
 ```
 
-The container carries the kind (`shoji-video`, `shoji-form`, `shoji-content`) and the provider (`shoji-youtube` …). The script tag comes once per page, with the first placeholder. After the click the container gets `shoji-loading`, then an `<iframe class="shoji-frame">`; once the frame has loaded (or after 5 seconds) the placeholder content is removed and the container has `shoji-opened`.
+The container carries the kind (`shoji-video`, `shoji-form`, `shoji-content`, `shoji-html`) and the provider (`shoji-youtube` …). The script tag comes once per page, with the first placeholder. After the click the container gets `shoji-loading`, then an `<iframe class="shoji-frame">`; once the frame has loaded (or after 5 seconds) the placeholder content is removed and the container has `shoji-opened`. Kind `html` gets a `<div class="shoji-markup">` with the site's markup instead of the iframe.
 
 A starting point for the CSS:
 
@@ -99,7 +100,9 @@ A starting point for the CSS:
 .shoji-button { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
 .shoji-note { position: absolute; inset: auto 0 0; margin: 0; padding: .5rem; font-size: .75rem; color: #fff; background: rgb(0 0 0 / .6); }
 .shoji-loading > :not(.shoji-frame) { opacity: .4; }
-.shoji-form { aspect-ratio: auto; }   /* an order form has no fixed ratio */
+.shoji-form, .shoji-html { aspect-ratio: auto; }   /* a form has no fixed ratio */
+.shoji-html .shoji-button, .shoji-html .shoji-note { position: static; }
+.shoji-markup:focus { outline: none; }   /* takes the focus from the removed button */
 ```
 
 ### Events
@@ -109,8 +112,9 @@ The script dispatches events on the container (they bubble), `detail.provider` n
 | Event | When |
 |---|---|
 | `shoji:open` | clicked, nothing loaded yet |
-| `shoji:script` | the provider script has loaded (or failed); the iframe comes next |
-| `shoji:loaded` | the iframe is there and the placeholder content is gone |
+| `shoji:inserted` | kind `html`: the markup is in the page, the placeholder content is gone, the provider scripts are not loaded yet — the place to fill hidden fields |
+| `shoji:script` | the provider scripts have loaded (or failed); for an iframe, the iframe comes next |
+| `shoji:loaded` | the iframe is there and the placeholder content is gone; kind `html`: the markup and its scripts are there |
 
 ```js
 document.addEventListener('shoji:open', (event) => {
@@ -129,16 +133,19 @@ $embed = shoji_embed('https://youtu.be/dQw4w9WgXcQ', null, [], 'Trailer');  // o
 // null = unknown address or invalid id
 $embed->provider;       // 'youtube'
 $embed->name();         // 'YouTube'      $embed->company();  // 'Google'
-$embed->kind();         // 'video' | 'form' | 'content'
+$embed->kind();         // 'video' | 'form' | 'content' | 'html'
 $embed->thumbUrl();     // own address of the preview image, or null
 $embed->frameUrl();     // own address the iframe loads (redirects to the provider)
-$embed->scriptUrl();    // own address of the provider script, or null
+$embed->htmlUrl();      // kind 'html': own address of the site's markup, else null
+$embed->scriptUrl();    // own address of the first provider script, or null
+$embed->scriptUrls();   // own addresses of all provider scripts, in order
+$embed->styleUrls();    // kind 'html': own addresses of the provider's stylesheets
 $embed->linkUrl();      // own address of the plain link
 $embed->allow();        // value for the iframe's allow attribute
 $embed->size();         // [1280, 720] or null
 ```
 
-Keep `data-shoji` and the `data-shoji-*` attributes on the container so `shoji.js` can open it, print `shoji_script_tag()` once, and keep the note with the privacy link. `shoji_i18n()` sets the language before you use `t('shoji.<key>')` or `Shoji\I18n::t()`.
+Keep `data-shoji` and the `data-shoji-*` attributes on the container so `shoji.js` can open it (`data-shoji-script` and `data-shoji-style` take several own addresses separated by a space), print `shoji_script_tag()` once, and keep the note with the privacy link. `shoji_i18n()` sets the language before you use `t('shoji.<key>')` or `Shoji\I18n::t()`.
 
 ## Configuration
 
@@ -151,7 +158,7 @@ All keys are read as `shoji.<name>`, flat or nested. `null` counts as "not set".
 | `texts` | — | Replaces single strings: `['de' => ['note.video' => 'Das Video lädt erst nach Deinem Klick von {name}.']]`, or flat for every language. Keys in [`translations/en.php`](translations/en.php). |
 | `language` | site language | `en` or `de`. Otherwise the current language of a multi-language site, its default language, the first two letters of Kirby's `locale`, English. |
 | `providers` | — | Add providers, change fields of a built-in one, or remove one with `false`. See below. |
-| `url` | — | Closure `fn (string $url, Shoji\Embed $embed, string $kind): string`, called when a route redirects (`$kind` = `frame`, `go` or `script`). Changes the provider address at click time, e.g. adds a campaign from a first-party cookie. Must return an `https` address, otherwise the route answers 404. |
+| `url` | — | Closure `fn (string $url, Shoji\Embed $embed, string $kind): string`, called when a route redirects (`$kind` = `frame`, `go`, `script` or `style`). Changes the provider address at click time, e.g. adds a campaign from a first-party cookie. Must return an `https` address, otherwise the route answers 404. |
 | `script` | `true` | `false`: the snippet prints no script tag; the site bundles `assets/shoji.js` itself (`shoji_script_url()` has the address). |
 | `secret` | random, in `storage/shoji/secret` | Signs Shoji's addresses. Set it (16+ characters) when several servers share a domain. |
 
@@ -179,17 +186,124 @@ A provider is a list entry; built-in ones are in [`src/Providers.php`](src/Provi
 | Field | Meaning |
 |---|---|
 | `name`, `company` | Shown in the note: who loads, who learns the IP address. |
-| `kind` | `video`, `form` or `content`: picks button and note texts. |
+| `kind` | `video`, `form`, `content` or `html`: picks button and note texts; `html` loads the site's markup instead of an iframe. |
 | `id` | Regular expression for a valid id. Ids must also match `[A-Za-z0-9_-]{1,64}`. |
 | `match` | Optional: finds the id (first group) in a pasted address. |
-| `embed` | The iframe address. |
-| `link` | Optional: the plain link; default `embed`. |
-| `script` | Optional: a script loaded before the iframe. |
+| `embed` | The iframe address (not for kind `html`). |
+| `snippet` | Kind `html` only: the site's Kirby snippet with the markup, e.g. `forms/{id}` for `site/snippets/forms/<id>.php`. |
+| `link` | Optional: the plain link; default `embed` (kind `html`: the bare markup). |
+| `script` | Optional: an address or a list of up to ten, loaded in order — before the iframe, or for kind `html` after the markup is in the page. |
+| `style` | Optional, kind `html`: a stylesheet address or a list of up to ten, loaded before the markup is shown. |
 | `thumbnails` | Optional: preview image candidates (address templates), or a closure `fn (string $id, Closure $fetch): array`. |
 | `size` | Optional: `[width, height]` of the preview image. |
 | `allow` | Optional: iframe features (`autoplay; fullscreen`). Each gets `*`, because the iframe is redirected from Shoji's own address. |
 
 Address templates know `{id}`, `{name}` (a parameter) and `{/name}` (a slash plus the parameter, or nothing). Parameters no placeholder uses become the query string. Templates must produce `https` addresses.
+
+## HTML forms (kind `html`)
+
+Some forms only work as markup in the page, not as an iframe. Brevo's sign-up form is one: its hosted iframe ignores the page's address, so a hidden field that carries a campaign key (`?cam=…`) never reaches Brevo. Kind `html` keeps such a form behind the same placeholder as an order form:
+
+1. Before the click the page holds the placeholder (button, note naming provider and company, privacy link) and only own addresses. The form's markup is not in the page at all.
+2. On the click `shoji.js` fetches the markup from `/shoji/html/<provider>/<id>?p=…&s=…` on your site, which renders **your Kirby snippet** in that request. Meanwhile it loads the provider's stylesheets (through `/shoji/style/…`, at most 5 seconds of waiting).
+3. The markup goes into the box, the placeholder content goes, the focus moves to the form, and `shoji:inserted` fires: the moment for page scripts to fill hidden fields.
+4. Only then the provider's scripts load (through `/shoji/script/…`, one after the other), because they look for their form when they run. `shoji:loaded` follows.
+
+Why a signed address and not a `<template>` in the page: the markup names the provider (the form's `action`), so a `<template>` would put the provider's host into the HTML before the click, and the page could no longer be checked by reading it. The signed address also means the markup is rendered from your snippet only (the name is fixed in the provider definition, parameters are signed), never from anything a visitor sends.
+
+Scripts inside the markup do **not** run (it is inserted as HTML, and a policy without `'unsafe-inline'` would block them anyway). Provider scripts belong in `script`; settings the provider's script reads from `window` belong in a file of your own that the page loads.
+
+### Example: Brevo with a campaign field
+
+`site/config/config.php`:
+
+```php
+'shoji.providers' => [
+    'brevo' => [
+        'name'    => 'Brevo',
+        'company' => 'Brevo',
+        'kind'    => 'html',
+        'id'      => '/^[a-z-]+$/',
+        'snippet' => 'forms/{id}',                                         // site/snippets/forms/newsletter.php
+        'style'   => 'https://sibforms.com/forms/end-form/build/sib-styles.css',
+        'script'  => 'https://sibforms.com/forms/end-form/build/main.js',
+        // optional, without JavaScript: Brevo's hosted form instead of the bare markup
+        // 'link' => 'https://abc123.sibforms.com/serve/MUIFAbC…',
+    ],
+],
+```
+
+`site/snippets/forms/newsletter.php` — the form part of Brevo's embed code (*Contacts → Forms → Share → Embed*), with the hidden field added. Leave out Brevo's `<link>`, `<style>` and `<script>` parts; move `style="…"` attributes into your CSS if your policy has no `'unsafe-inline'` for styles:
+
+```php
+<div class="sib-form">
+  <div id="sib-form-container" class="sib-form-container">
+    <div id="error-message" class="sib-form-message-panel">
+      <div class="sib-form-message-panel__text sib-form-message-panel__text--center">
+        <span class="sib-form-message-panel__inner-text">Die Anmeldung hat nicht geklappt. Bitte versuchen Sie es erneut.</span>
+      </div>
+    </div>
+    <div id="success-message" class="sib-form-message-panel">
+      <div class="sib-form-message-panel__text sib-form-message-panel__text--center">
+        <span class="sib-form-message-panel__inner-text">Fast geschafft: Bitte bestätigen Sie Ihre Adresse.</span>
+      </div>
+    </div>
+    <div id="sib-container" class="sib-container--large sib-container--vertical">
+      <form id="sib-form" method="POST" action="https://abc123.sibforms.com/serve/MUIFAbC…" data-type="subscription">
+        <div class="sib-input sib-form-block">
+          <div class="form__entry entry_block">
+            <div class="form__label-row">
+              <label class="entry__label" for="EMAIL" data-required="*">E-Mail-Adresse</label>
+              <div class="entry__field">
+                <input class="input" type="text" id="EMAIL" name="EMAIL" autocomplete="off" placeholder="E-Mail" data-required="true" required>
+              </div>
+            </div>
+            <label class="entry__error entry__error--primary"></label>
+          </div>
+        </div>
+        <div class="sib-form-block">
+          <button class="sib-form-block__button sib-form-block__button-with-loader" form="sib-form" type="submit">Anmelden</button>
+        </div>
+        <!-- the campaign: filled here from the signed params, or later in the browser (below) -->
+        <input type="hidden" name="CAM" value="<?= esc($params['cam'] ?? '') ?>">
+        <input type="text" name="email_address_check" value="" class="input--hidden">
+        <input type="hidden" name="locale" value="de">
+      </form>
+    </div>
+  </div>
+</div>
+```
+
+The template:
+
+```php
+<?php snippet('shoji/embed', ['provider' => 'brevo', 'id' => 'newsletter']) ?>
+```
+
+The snippet runs in the `/shoji/html/…` request, not in the page's: `$page` there is not the page the visitor sees, and the visitor's query string is not there either. Values the page knows when it renders go in as `params` (`['cam' => …]` arrives as `$params['cam']`, signed). A value only the browser knows — a campaign key from the address or from `sessionStorage`, kept by the site's own script — is filled in on `shoji:inserted`. Shoji inserts the markup as the server rendered it, so a field the snippet filled stays filled:
+
+```js
+// cam.js, the site's own file (script-src 'self')
+function fillCampaign(root) {
+  var cam = new URLSearchParams(location.search).get('cam') || sessionStorage.getItem('cam');
+  if (!cam) {
+    return;
+  }
+  root.querySelectorAll('input[name="CAM"]').forEach(function (field) {
+    if (!field.value) {
+      field.value = cam; // a value the server already filled in stays
+    }
+  });
+}
+fillCampaign(document);
+document.addEventListener('shoji:inserted', function (event) {
+  fillCampaign(event.target);
+});
+```
+
+`cam.js` must be loaded before the click (with `defer` it is, long before anyone clicks). `CAM` must exist as a contact attribute in Brevo.
+
+Without JavaScript the button leads to `link` (Brevo's hosted form, which loses the campaign) or, without one, to `/shoji/html/…` itself: the bare form, which still submits to Brevo. With Shoji switched off the snippet prints the plain `link`, or nothing.
 
 ## Content Security Policy
 
@@ -197,9 +311,14 @@ Shoji needs no `'unsafe-inline'`, but the policy must allow the first step of ea
 
 | Directive | Needs | Why |
 |---|---|---|
-| `script-src` | `'self'` plus each provider script host (Digistore24: `https://www.digistore24-scripts.com`) | `shoji.js` comes from `/media/plugins/…`; `/shoji/script/…` redirects to the provider script, and the policy checks the target, too |
+| `script-src` | `'self'` plus each provider script host (Digistore24: `https://www.digistore24-scripts.com`; Brevo: `https://sibforms.com`) | `shoji.js` comes from `/media/plugins/…`; `/shoji/script/…` redirects to the provider script, and the policy checks the target, too |
 | `frame-src` | `'self'` plus each provider frame host (`https://www.youtube-nocookie.com`, `https://player.vimeo.com`, `https://www.digistore24.com` …) | the iframe starts at `/shoji/frame/…` on your site and is redirected; **without `'self'` nothing opens** |
 | `img-src` | `'self'` | preview images come from `/shoji/thumb/…` |
+| `connect-src` | kind `html`: `'self'` (plus the host the provider's script sends the form to; Brevo: your form's `https://….sibforms.com`) | `shoji.js` fetches the markup from `/shoji/html/…`; Brevo's script submits the form itself |
+| `style-src` | kind `html`: `'self'` plus each provider stylesheet host (Brevo: `https://sibforms.com`) | `/shoji/style/…` redirects to the stylesheet |
+| `form-action` | kind `html`: the host in the form's `action` (Brevo: `https://….sibforms.com`) | the form submits there; also without the provider's script |
+
+A policy with `default-src 'self'` and no `connect-src` already allows the fetch. Whatever the provider's files load in turn (fonts, a captcha, images) needs its own entries; Brevo's form with reCAPTCHA needs Google's hosts as well.
 
 Test with `Content-Security-Policy-Report-Only` first: a click on every kind of placeholder must not produce a report.
 
@@ -209,10 +328,12 @@ Test with `Content-Security-Policy-Report-Only` first: a click on every kind of 
 |---|---|
 | `/shoji/thumb/<provider>/<id>?s=…` | The preview image from the cache, fetched from the provider when missing or older than 30 days. A failed fetch is remembered for a day; meanwhile (and when nothing usable comes back) a blank SVG in the right proportions. |
 | `/shoji/frame/<provider>/<id>?p=…&s=…` | 302 to the provider's embed address. The iframe loads this. |
-| `/shoji/script/<provider>/<id>?s=…` | 302 to the provider script. |
+| `/shoji/script/<provider>/<id>?n=…&s=…` | 302 to the provider script; `n` (1, 2 …) for the second and later script, signed like the rest. |
+| `/shoji/style/<provider>/<id>?n=…&s=…` | Kind `html`: 302 to the provider stylesheet. |
+| `/shoji/html/<provider>/<id>?p=…&s=…` | Kind `html`: the site's snippet, rendered now, `text/html`, `no-store`, `noindex`. A missing or empty snippet is a 404. |
 | `/shoji/go/<provider>/<id>?p=…&s=…` | 302 to the provider's page (the plain link). |
 
-`s` is an HMAC over kind, provider, id and parameters with the site's secret: only addresses the site rendered work, and the image route cannot be used to make the server fetch arbitrary images. Redirects are `no-store` and `noindex`. Images are checked by their first bytes (JPEG, PNG, WebP), at most 5 MB, and fetched without any visitor data.
+`s` is an HMAC over kind, provider, id and parameters (or the script's index) with the site's secret: only addresses the site rendered work, and the image route cannot be used to make the server fetch arbitrary images. Redirects are `no-store` and `noindex`. Images are checked by their first bytes (JPEG, PNG, WebP), at most 5 MB, and fetched without any visitor data.
 
 The iframe's `allow` attribute lists every feature with `*`: the frame starts at Shoji's own address and is redirected, so the default allowlist (the frame's own origin) would not reach the provider. The redirect keeps the page as referrer; YouTube refuses to play without one.
 
@@ -229,7 +350,7 @@ composer install --ignore-platform-req=ext-gd   # Kirby is a dev dependency used
 composer test                                   # or: sh tests/run.sh
 ```
 
-The tests are plain PHP scripts (exit code 0 = pass). `KirbyTest.php` renders a page with every way content gets in and fails if a provider host appears in the HTML before the click; no test needs a network. `node --test tests/*.test.mjs` checks `shoji.js` against a small fake DOM: it opens only Shoji's own `/shoji/frame|script/…` addresses on the same host, so injected `data-shoji` attributes cannot load a `javascript:` frame or a foreign script.
+The tests are plain PHP scripts (exit code 0 = pass). `KirbyTest.php` renders a page with every way content gets in and fails if a provider host appears in the HTML before the click; no test needs a network. `node --test tests/*.test.mjs` checks `shoji.js` against a small fake DOM: it opens only Shoji's own `/shoji/frame|html|script|style/…` addresses on the same host, so injected `data-shoji` attributes cannot load a `javascript:` frame, foreign markup or a foreign script; and kind `html` puts the markup in before `shoji:inserted` and the provider's scripts.
 
 ## License
 

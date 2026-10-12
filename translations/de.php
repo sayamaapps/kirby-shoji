@@ -10,6 +10,7 @@ return [
     'note.video'        => 'Das Video lädt erst nach dem Klick von {name}. Dabei erfährt {company} Ihre IP-Adresse.',
     'note.form'         => 'Das Formular lädt erst nach dem Klick von {name}. Dabei erfährt {company} Ihre IP-Adresse.',
     'note.content'      => 'Der Inhalt lädt erst nach dem Klick von {name}. Dabei erfährt {company} Ihre IP-Adresse.',
+    'note.html'         => 'Das Formular lädt erst nach dem Klick, mit Skripten von {name}. Dabei erfährt {company} Ihre IP-Adresse.',
     'privacy'           => 'Datenschutzerklärung',
     'thumbAlt'          => 'Vorschaubild: {title}',
     'thumbAltUntitled'  => 'Vorschaubild des {name}-Videos',

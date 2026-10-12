@@ -1,28 +1,38 @@
 /*!
  * Shoji — click-to-load for Kirby CMS. https://github.com/simsimmal/kirby-shoji
  *
- * A [data-shoji] placeholder loads its iframe (and, first, an optional
- * provider script) only when the visitor clicks it. Every address comes
+ * A [data-shoji] placeholder loads its iframe (and, first, optional
+ * provider scripts) only when the visitor clicks it. Every address comes
  * from the placeholder's data attributes and points to this site; the site
  * redirects to the provider. No inline script, no cookies, no storage —
  * the next page asks again.
  *
+ * Kind 'html' (data-shoji-html): the site's own markup (a newsletter form,
+ * say) is fetched from this site, put into the page after the provider's
+ * stylesheets have loaded, and only then are the provider's scripts loaded.
+ * Scripts inside the markup do not run; the provider's scripts come from
+ * data-shoji-script like everywhere else.
+ *
  * Events on the placeholder (they bubble), detail = { provider }:
- *   shoji:open    clicked, nothing loaded yet
- *   shoji:script  the provider script has loaded (or failed), the iframe comes next
- *   shoji:loaded  the iframe fired load (or 5 seconds passed); the placeholder
- *                 content is gone, the container has the class shoji-opened
+ *   shoji:open      clicked, nothing loaded yet
+ *   shoji:inserted  kind 'html': the markup is in the page, the placeholder content
+ *                   is gone, the provider scripts are not loaded yet. The place to
+ *                   fill hidden form fields.
+ *   shoji:script    the provider scripts have loaded (or failed); for an iframe, the
+ *                   iframe comes next
+ *   shoji:loaded    the iframe fired load (or 5 seconds passed), or the markup and
+ *                   its scripts are there; the container has the class shoji-opened
  * While loading, the container has the class shoji-loading and still holds
- * the placeholder content next to the new iframe.
+ * the placeholder content.
  */
 (function () {
   'use strict';
 
-  var scripts = {}; // src -> list of callbacks while loading, true when done
+  var loading = {}; // script or stylesheet address -> callbacks while loading, true when done
 
   /**
    * The address only if it is one of Shoji's own on this host
-   * (/shoji/frame/… or /shoji/script/…). Someone who manages to inject
+   * (/shoji/frame|html|script|style/…). Someone who manages to inject
    * HTML with data-shoji attributes (a sanitizer keeps data-* attributes)
    * must not get a javascript: frame or a foreign script out of this file.
    */
@@ -42,6 +52,26 @@
     return url.href;
   }
 
+  /**
+   * Own addresses separated by spaces, as a list; [] for none, null if
+   * any of them is not Shoji's own (then nothing opens at all).
+   */
+  function ownList(value, kind) {
+    var parts = (value || '').split(/\s+/);
+    var list = [];
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] === '') {
+        continue;
+      }
+      var url = own(parts[i], kind);
+      if (!url) {
+        return null;
+      }
+      list.push(url);
+    }
+    return list;
+  }
+
   function emit(box, name) {
     var event;
     var detail = { provider: box.getAttribute('data-shoji-provider') };
@@ -54,29 +84,69 @@
     box.dispatchEvent(event);
   }
 
-  function loadScript(src, done) {
-    if (scripts[src] === true) {
+  /** Loads a script or stylesheet once per page; done() also when it fails. */
+  function load(tag, src, done) {
+    if (loading[src] === true) {
       done();
       return;
     }
-    if (scripts[src]) {
-      scripts[src].push(done);
+    if (loading[src]) {
+      loading[src].push(done);
       return;
     }
-    scripts[src] = [done];
-    var script = document.createElement('script');
+    loading[src] = [done];
+    var element = document.createElement(tag);
     // A failed script must not block the iframe: the order form or player
     // usually works without its helper script.
-    script.onload = script.onerror = function () {
-      var waiting = scripts[src];
-      scripts[src] = true;
+    element.onload = element.onerror = function () {
+      var waiting = loading[src];
+      loading[src] = true;
       for (var i = 0; i < waiting.length; i++) {
         waiting[i]();
       }
     };
-    script.async = true;
-    script.src = src;
-    document.head.appendChild(script);
+    if (tag === 'link') {
+      element.rel = 'stylesheet';
+      element.href = src;
+    } else {
+      element.async = true;
+      element.src = src;
+    }
+    document.head.appendChild(element);
+  }
+
+  /** The scripts one after the other, in their order (a later one may need an earlier one). */
+  function loadScripts(box, list, done) {
+    var i = 0;
+    (function next() {
+      if (i < list.length) {
+        load('script', list[i++], next);
+        return;
+      }
+      if (list.length) {
+        emit(box, 'shoji:script');
+      }
+      done();
+    })();
+  }
+
+  /** Everything in the box except keep goes; the box is opened. */
+  function reveal(box, keep) {
+    var hadFocus = box.contains(document.activeElement);
+    var children = Array.prototype.slice.call(box.children);
+    for (var i = 0; i < children.length; i++) {
+      if (children[i] !== keep) {
+        box.removeChild(children[i]);
+      }
+    }
+    box.classList.remove('shoji-loading');
+    box.classList.add('shoji-opened');
+    box.setAttribute('data-shoji-state', 'opened');
+    // The button had the focus and is gone: keyboard and screen reader
+    // continue at the new content instead of the top of the page.
+    if (hadFocus) {
+      keep.focus();
+    }
   }
 
   function insertFrame(box, src) {
@@ -93,19 +163,7 @@
         return;
       }
       finished = true;
-      var hadFocus = box.contains(document.activeElement);
-      var children = Array.prototype.slice.call(box.children);
-      for (var i = 0; i < children.length; i++) {
-        if (children[i] !== frame) {
-          box.removeChild(children[i]);
-        }
-      }
-      box.classList.remove('shoji-loading');
-      box.classList.add('shoji-opened');
-      box.setAttribute('data-shoji-state', 'opened');
-      if (hadFocus) {
-        frame.focus();
-      }
+      reveal(box, frame);
       emit(box, 'shoji:loaded');
     }
 
@@ -118,24 +176,99 @@
     box.appendChild(frame);
   }
 
+  /**
+   * Kind 'html': the markup from the site and the provider's stylesheets
+   * at the same time; in the page once both are there (a stylesheet that
+   * hangs is given 5 seconds); then the provider's scripts, which look for
+   * their form when they run. Markup that cannot be fetched: the button's
+   * plain link, as without JavaScript.
+   */
+  function openHtml(box, src, scripts, styles) {
+    var html = null;
+    var styled = false;
+    var done = false;
+    var pending = styles.length;
+
+    function insert() {
+      if (done || html === null || !styled) {
+        return;
+      }
+      done = true;
+      var holder = document.createElement('div');
+      holder.className = 'shoji-markup';
+      holder.setAttribute('tabindex', '-1');
+      // Parsed as HTML; scripts in it stay inert. Values the site's snippet
+      // filled in are kept as they are.
+      holder.innerHTML = html;
+      box.appendChild(holder);
+      reveal(box, holder);
+      emit(box, 'shoji:inserted');
+      loadScripts(box, scripts, function () {
+        emit(box, 'shoji:loaded');
+      });
+    }
+    function styleDone() {
+      if (--pending <= 0) {
+        styled = true;
+        insert();
+      }
+    }
+
+    if (pending === 0) {
+      styled = true;
+    } else {
+      window.setTimeout(function () {
+        styled = true;
+        insert();
+      }, 5000);
+      for (var i = 0; i < styles.length; i++) {
+        load('link', styles[i], styleDone);
+      }
+    }
+    window.fetch(src, { credentials: 'same-origin', headers: { Accept: 'text/html' } })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+        return response.text();
+      })
+      .then(function (text) {
+        html = text;
+        insert();
+      }, function () {
+        done = true;
+        box.removeAttribute('data-shoji-state');
+        box.classList.remove('shoji-loading');
+        var button = box.querySelector('a.shoji-button');
+        if (button && button.href) {
+          window.location.href = button.href;
+        }
+      });
+  }
+
   function open(box) {
-    var src = own(box.getAttribute('data-shoji-frame'), 'frame');
-    var scriptAttribute = box.getAttribute('data-shoji-script');
-    var script = scriptAttribute ? own(scriptAttribute, 'script') : null;
-    if (box.hasAttribute('data-shoji-state') || !src || (scriptAttribute && !script)) {
+    if (box.hasAttribute('data-shoji-state')) {
+      return false;
+    }
+    var html = box.hasAttribute('data-shoji-html');
+    var src = html
+      ? own(box.getAttribute('data-shoji-html'), 'html')
+      : own(box.getAttribute('data-shoji-frame'), 'frame');
+    var scripts = ownList(box.getAttribute('data-shoji-script'), 'script');
+    var styles = html ? ownList(box.getAttribute('data-shoji-style'), 'style') : [];
+    if (!src || !scripts || !styles || (html && typeof window.fetch !== 'function')) {
       return false;
     }
     box.setAttribute('data-shoji-state', 'loading');
     box.classList.add('shoji-loading');
     emit(box, 'shoji:open');
 
-    if (script) {
-      loadScript(script, function () {
-        emit(box, 'shoji:script');
+    if (html) {
+      openHtml(box, src, scripts, styles);
+    } else {
+      loadScripts(box, scripts, function () {
         insertFrame(box, src);
       });
-    } else {
-      insertFrame(box, src);
     }
     return true;
   }

@@ -91,6 +91,24 @@ try {
     expect('https://www.youtube-nocookie.com/embed/{id}?autoplay=1&rel=0', $custom['youtube']['embed'], 'single field replaced');
     expect('YouTube', $custom['youtube']['name'], 'other fields kept');
 
+    // Kind html: the site's snippet instead of an iframe address, scripts and stylesheets as lists
+    $html = ['name' => 'Brevo', 'company' => 'Brevo', 'kind' => 'html', 'id' => '/^[a-z]+$/', 'snippet' => 'forms/{id}',
+        'script' => ['https://sibforms.com/forms/end-form/build/main.js'], 'style' => 'https://sibforms.com/forms/end-form/build/sib-styles.css'];
+    expect(null, Providers::problem($html), 'html: valid without embed');
+    expect("'snippet' is missing", Providers::problem(array_diff_key($html, ['snippet' => 1])), 'html: snippet required');
+    expect("'embed' is missing", Providers::problem(['kind' => 'form'] + array_diff_key($html, ['kind' => 1])), 'other kinds: embed still required');
+    foreach (['../secret', 'forms/../../x', 'forms/{id}.php', '/abs', 'forms//x', 'forms/{other}'] as $bad) {
+        holds(Providers::problem(['snippet' => $bad] + $html) !== null, "html: snippet name refused: $bad");
+    }
+    expect(['https://a.example/1.js', 'https://a.example/2.js'], Providers::assets(['script' => ['https://a.example/1.js', 'https://a.example/2.js']], 'script'), 'script list kept in order');
+    expect(['https://a.example/1.js'], Providers::assets(['script' => 'https://a.example/1.js'], 'script'), 'a single script is a list of one');
+    expect([], Providers::assets([], 'style'), 'no stylesheets');
+    foreach ([['http://a.example/x.js'], ['x' => 'https://a.example/x.js'], [['https://a.example/x.js']], array_fill(0, 11, 'https://a.example/x.js')] as $bad) {
+        holds(Providers::problem(['script' => $bad] + $html) !== null, 'script list refused: ' . json_encode($bad));
+        holds(Providers::problem(['style' => $bad] + $html) !== null, 'style list refused: ' . json_encode($bad));
+    }
+    expect(['youtube', 'vimeo', 'digistore', 'brevo'], array_keys(Providers::all(['brevo' => $html])), 'html provider added through shoji.providers');
+
     // allow: every feature for any origin (the frame is redirected from our own address)
     expect('autoplay *; encrypted-media *; fullscreen *; picture-in-picture *', Providers::allow($yt), 'allow attribute');
     expect('payment *', Providers::allow(['allow' => 'payment; evil="x"; ']), 'only plain feature names');
@@ -104,6 +122,8 @@ try {
     expect(false, $signer->verify($s, 'frame', 'youtube', 'dQw4w9WgXcQ', 'aff=x'), 'bound to the parameters');
     expect(false, (new Signer(str_repeat('j', 32)))->verify($s, 'frame', 'youtube', 'dQw4w9WgXcQ', ''), 'bound to the secret');
     expect(false, $signer->verify('', 'frame', 'youtube', 'dQw4w9WgXcQ', ''), 'empty signature');
+    $script = $signer->sign('script', 'brevo', 'newsletter', '');
+    expect(false, $signer->verify($script, 'script', 'brevo', 'newsletter', 'n=1'), 'bound to the script index');
     $dir = sys_get_temp_dir() . '/shoji-secret-' . bin2hex(random_bytes(4));
     $first = Signer::storedSecret($dir);
     expect(64, strlen($first), 'secret created');

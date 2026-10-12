@@ -12,8 +12,10 @@
  * & < > " ' encoded) is enough and keeps addresses readable.
  *
  * Before the click the page names no provider host: the preview image, the
- * link and the iframe address all point to /shoji/… on this site. Without
- * JavaScript the button is a plain link that leads to the provider.
+ * link, the iframe address, and for kind 'html' the address of the site's
+ * own markup and the provider's scripts and stylesheets all point to
+ * /shoji/… on this site. Without JavaScript the button is a plain link that
+ * leads to the provider (kind 'html' without a `link`: to the bare markup).
  *
  * @var \Shoji\Embed|null $embed   ready-made, or:
  * @var string|null       $url     a pasted address, or:
@@ -61,9 +63,17 @@ foreach (is_array($attrs ?? null) ? $attrs : [] as $name => $value) {
     }
 }
 
-if (($open ?? false) === true) : ?>
+if (($open ?? false) === true && $embed->kind() === 'html') : ?>
 <div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
-  <?php if ($script = $embed->scriptUrl()) : ?><script src="<?= esc($script) ?>" defer></script><?php endif ?>
+  <?php foreach ($embed->styleUrls() as $style) : ?><link rel="stylesheet" href="<?= esc($style) ?>"><?php endforeach ?>
+  <div class="shoji-markup"><?= $embed->html() ?></div>
+  <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
+</div>
+<?php
+    return;
+elseif (($open ?? false) === true) : ?>
+<div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
+  <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
   <iframe class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>" src="<?= esc($embed->frameUrl()) ?>" title="<?= esc($frameTitle) ?>" allow="<?= esc($embed->allow()) ?>" allowfullscreen loading="lazy"></iframe>
 </div>
 <?php
@@ -72,15 +82,26 @@ endif;
 
 $label ??= match ($embed->kind()) {
     'video' => $embed->title !== null ? $t('button.videoTitle', ['title' => $embed->title]) : $t('button.video'),
-    'form'  => $t('button.form'),
+    'form', 'html' => $t('button.form'),
     default => $t('button.content'),
 };
 $note ??= $t('note.' . $embed->kind(), $names);
 $privacy = $note !== false ? Options::privacyUrl(kirby()) : null;
 $thumb = $embed->thumbUrl();
 $size = $embed->size();
+// Kind 'html' loads the site's markup instead of an iframe. Several scripts
+// or stylesheets: own addresses separated by a space, loaded in this order.
+$data = ['data-shoji-provider' => $embed->provider];
+if ($html = $embed->htmlUrl()) {
+    $data['data-shoji-html'] = $html;
+} else {
+    $data += ['data-shoji-frame' => $embed->frameUrl(), 'data-shoji-title' => $frameTitle, 'data-shoji-allow' => $embed->allow()];
+}
+$data['data-shoji-script'] = implode(' ', $embed->scriptUrls());
+$data['data-shoji-style'] = implode(' ', $embed->styleUrls());
+$data['data-shoji-frame-class'] = $html ? '' : ($frameClass ?? '');
 ?>
-<div class="<?= esc($classes) ?>" data-shoji data-shoji-provider="<?= esc($embed->provider) ?>" data-shoji-frame="<?= esc($embed->frameUrl()) ?>" data-shoji-title="<?= esc($frameTitle) ?>" data-shoji-allow="<?= esc($embed->allow()) ?>"<?php if ($script = $embed->scriptUrl()) : ?> data-shoji-script="<?= esc($script) ?>"<?php endif ?><?php if (!empty($frameClass)) : ?> data-shoji-frame-class="<?= esc($frameClass) ?>"<?php endif ?><?= $extra ? ' ' . attr($extra) : '' ?>>
+<div class="<?= esc($classes) ?>" data-shoji<?php foreach ($data as $name => $value) : if ($value !== '') : ?> <?= $name ?>="<?= esc($value) ?>"<?php endif; endforeach ?><?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php if ($thumb) : ?>
   <img class="shoji-thumb" src="<?= esc($thumb) ?>" alt="<?= esc($embed->title !== null ? $t('thumbAlt', ['title' => $embed->title]) : $t('thumbAltUntitled', $names)) ?>"<?php if ($size) : ?> width="<?= $size[0] ?>" height="<?= $size[1] ?>"<?php endif ?> loading="lazy" decoding="async">
   <?php endif ?>

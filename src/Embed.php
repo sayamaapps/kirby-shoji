@@ -77,7 +77,7 @@ final class Embed
     public function kind(): string
     {
         $kind = $this->definition['kind'] ?? 'content';
-        return in_array($kind, ['video', 'form', 'content'], true) ? $kind : 'content';
+        return in_array($kind, Providers::KINDS, true) ? $kind : 'content';
     }
 
     public function hasThumbnail(): bool
@@ -88,7 +88,39 @@ final class Embed
 
     public function hasScript(): bool
     {
-        return isset($this->definition['script']);
+        return $this->assets('script') !== [];
+    }
+
+    /**
+     * Kind 'html': name of the site's snippet with the markup ({id} filled
+     * in), null for every other kind.
+     */
+    public function snippet(): ?string
+    {
+        return $this->kind() === 'html' ? str_replace('{id}', $this->id, $this->definition['snippet']) : null;
+    }
+
+    /**
+     * Kind 'html': the markup from the site's snippet, rendered for the
+     * /shoji/html/… route (after the click) or the open mode. The snippet
+     * gets $embed and $params (the signed parameters); it runs in that
+     * request, not in the page's, so values from the page travel as params.
+     * Null if the snippet is missing or prints nothing.
+     */
+    public function html(): ?string
+    {
+        $snippet = $this->snippet();
+        if ($snippet === null) {
+            return null;
+        }
+        $html = trim((string) $this->kirby->snippet($snippet, ['embed' => $this, 'params' => $this->params], true));
+        return $html !== '' ? $html : null;
+    }
+
+    /** @return list<string> the provider's scripts or stylesheets, in order */
+    private function assets(string $key): array
+    {
+        return $key === 'style' && $this->kind() !== 'html' ? [] : Providers::assets($this->definition, $key) ?? [];
     }
 
     /** [width, height] of the preview image, or null. */
@@ -117,27 +149,58 @@ final class Embed
         return $this->ownUrl('frame', true);
     }
 
-    public function scriptUrl(): ?string
+    /** Kind 'html': the own address that serves the markup; null for other kinds. */
+    public function htmlUrl(): ?string
     {
-        return $this->hasScript() ? $this->ownUrl('script', false) : null;
+        return $this->kind() === 'html' ? $this->ownUrl('html', true) : null;
     }
 
-    /** The plain link: works without JavaScript, redirects to the provider on click. */
+    /** The first provider script's own address, or null. */
+    public function scriptUrl(): ?string
+    {
+        return $this->scriptUrls()[0] ?? null;
+    }
+
+    /** @return list<string> own addresses of every provider script, in order */
+    public function scriptUrls(): array
+    {
+        return array_map(fn (int $n) => $this->ownUrl('script', false, $n), array_keys($this->assets('script')));
+    }
+
+    /** @return list<string> kind 'html': own addresses of the provider's stylesheets */
+    public function styleUrls(): array
+    {
+        return array_map(fn (int $n) => $this->ownUrl('style', false, $n), array_keys($this->assets('style')));
+    }
+
+    /**
+     * The plain link: works without JavaScript, redirects to the provider on
+     * click. Kind 'html' without a `link`: the markup itself (a bare form
+     * still submits to the provider).
+     */
     public function linkUrl(): string
     {
-        return $this->ownUrl('go', true);
+        return $this->kind() === 'html' && !isset($this->definition['link'])
+            ? $this->ownUrl('html', true)
+            : $this->ownUrl('go', true);
     }
 
     /**
      * /shoji/<kind>/<provider>/<id>?p=<params>&s=<signature>. Parameters are
      * part of the signature, so nobody can change them in a copied address.
+     * The second and later script or stylesheet carry their index (n=1 …),
+     * signed as well; the first has none, so its address is the same as in 1.0.
      */
-    private function ownUrl(string $kind, bool $withParams): string
+    private function ownUrl(string $kind, bool $withParams, int $index = 0): string
     {
         $p = $withParams ? self::encodeParams($this->params) : '';
-        $query = ['s' => self::signer($this->kirby)->sign($kind, $this->provider, $this->id, $p)];
+        $signed = $index > 0 ? self::encodeIndex($index) : $p;
+        $query = ['s' => self::signer($this->kirby)->sign($kind, $this->provider, $this->id, $signed)];
         if ($p !== '') {
             $query = ['p' => $p] + $query;
+        }
+        if ($index > 0) {
+            $query = ['n' => (string) $index] + $query;
         }
         return $this->kirby->url() . '/shoji/' . $kind . '/' . $this->provider . '/' . $this->id
             . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
@@ -150,18 +213,18 @@ final class Embed
      * definition, passed through the `shoji.url` hook. Null if the provider
      * has none for this kind or the hook returned no https address.
      */
-    public function target(string $kind): ?string
+    public function target(string $kind, int $index = 0): ?string
     {
         $template = match ($kind) {
-            'frame'  => $this->definition['embed'],
-            'go'     => $this->definition['link'] ?? $this->definition['embed'],
-            'script' => $this->definition['script'] ?? null,
+            'frame'  => $this->definition['embed'] ?? null,
+            'go'     => $this->definition['link'] ?? $this->definition['embed'] ?? null,
+            'script', 'style' => $this->assets($kind)[$index] ?? null,
             default  => null,
         };
         if ($template === null) {
             return null;
         }
-        $url = Providers::fill($template, $this->id, $kind === 'script' ? [] : $this->params);
+        $url = Providers::fill($template, $this->id, $kind === 'script' || $kind === 'style' ? [] : $this->params);
         $hook = Options::get($this->kirby, 'url');
         if ($hook instanceof Closure) {
             $url = $hook($url, $this, $kind);
@@ -208,6 +271,12 @@ final class Embed
         }
         parse_str($encoded, $params);
         return Providers::params($params);
+    }
+
+    /** What the signature covers for the second and later script or stylesheet. */
+    public static function encodeIndex(int $index): string
+    {
+        return 'n=' . $index;
     }
 
     public static function signer(App $kirby): Signer

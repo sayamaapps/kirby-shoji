@@ -10,6 +10,7 @@ return [
     'note.video'        => 'The video is loaded from {name} only after you click. {company} then learns your IP address.',
     'note.form'         => 'The form is loaded from {name} only after you click. {company} then learns your IP address.',
     'note.content'      => 'The content is loaded from {name} only after you click. {company} then learns your IP address.',
+    'note.html'         => 'The form is loaded only after you click, with scripts from {name}. {company} then learns your IP address.',
     'privacy'           => 'Privacy policy',
     'thumbAlt'          => 'Preview image: {title}',
     'thumbAltUntitled'  => 'Preview image of the {name} video',

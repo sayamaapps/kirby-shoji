@@ -6,8 +6,10 @@
  * provider host before the click. Further: escaping, no inline script, the
  * switch (off = plain link / Kirby's own tag and block / routes 404), the
  * signed routes (redirects, preview image cache, tampering), `shoji.url`,
- * `shoji.texts`, the privacy link, and that a site's own
- * site/snippets/shoji/embed.php wins.
+ * `shoji.texts`, the privacy link, that a site's own
+ * site/snippets/shoji/embed.php wins, and kind 'html' (a Brevo form from a
+ * site snippet: nothing of it in the page, served only by its signed
+ * address, scripts and stylesheets through their own addresses).
  *   php tests/KirbyTest.php
  */
 $base = dirname(__DIR__);
@@ -43,7 +45,7 @@ function removeTree(string $path): void
 }
 
 /** Every host a provider uses. None of them may appear in a page before the click. */
-const FOREIGN = '~(?:youtube(?:-nocookie)?\.com|youtu\.be|ytimg\.com|googlevideo\.com|vimeo\.com|vimeocdn\.com|digistore24(?:-scripts)?\.com)~i';
+const FOREIGN = '~(?:youtube(?:-nocookie)?\.com|youtu\.be|ytimg\.com|googlevideo\.com|vimeo\.com|vimeocdn\.com|digistore24(?:-scripts)?\.com|sibforms\.com|brevo\.com)~i';
 
 $tmp = sys_get_temp_dir() . '/shoji-kirby-' . bin2hex(random_bytes(6));
 $hostile = '"><script>alert(1)</script>';
@@ -234,6 +236,105 @@ PHP);
     file_put_contents($tmp . '/site/snippets/shoji/embed.php', '<div class="own"><?= esc(shoji_embed($provider, $id)->frameUrl()) ?></div>');
     $own = $render($on);
     holds(str_starts_with($own, '<div class="own">https://site.example/shoji/frame/youtube/dQw4w9WgXcQ'), 'site snippet takes over, building on shoji_embed()');
+
+    // 7. Kind html: a Brevo form with a hidden campaign field, from the site's own snippet.
+    unlink($tmp . '/site/snippets/shoji/embed.php');
+    mkdir($tmp . '/site/snippets/forms');
+    file_put_contents($tmp . '/site/snippets/forms/newsletter.php', <<<'PHP'
+<div class="sib-form"><div id="sib-form-container" class="sib-form-container">
+<form id="sib-form" method="POST" action="https://abc123.sibforms.com/serve/MUIFAbC" data-type="subscription">
+<input class="input" type="text" id="EMAIL" name="EMAIL" autocomplete="off" placeholder="EMAIL" data-required="true" required>
+<input type="hidden" name="CAM" value="<?= esc($params['cam'] ?? '') ?>">
+<input type="text" name="email_address_check" value="" class="input--hidden">
+<input type="hidden" name="locale" value="de">
+<button class="sib-form-block__button" form="sib-form" type="submit">Anmelden</button>
+</form></div></div>
+PHP);
+    $brevo = [
+        'name' => 'Brevo', 'company' => 'Brevo', 'kind' => 'html', 'id' => '/^[a-z-]+$/', 'snippet' => 'forms/{id}',
+        'script' => ['https://sibforms.com/forms/end-form/build/main.js', 'https://sibforms.com/forms/end-form/build/extra.js'],
+        'style'  => 'https://sibforms.com/forms/end-form/build/sib-styles.css',
+    ];
+    $html = $on + ['shoji.providers' => ['brevo' => $brevo]];
+    file_put_contents($tmp . '/site/templates/home.php', <<<'PHP'
+<!doctype html><html><body>
+<?php snippet('shoji/embed', ['provider' => 'brevo', 'id' => 'newsletter', 'params' => ['cam' => 'spring-26']]) ?>
+<?php snippet('shoji/embed', ['provider' => 'brevo', 'id' => 'missing']) ?>
+</body></html>
+PHP);
+    $page = $render($html);
+    holds(preg_match(FOREIGN, $page, $hit) === 0, 'html: no provider host in the page before the click, found ' . ($hit[0] ?? ''));
+    holds(!str_contains($page, '<form') && !str_contains($page, 'sib-form') && !str_contains($page, 'CAM'), 'html: the form markup is not in the page before the click');
+    expect(2, substr_count($page, ' data-shoji '), 'html: two placeholders');
+    holds(str_contains($page, 'class="shoji shoji-html shoji-brevo" data-shoji data-shoji-provider="brevo" data-shoji-html="https://site.example/shoji/html/brevo/newsletter?p=cam%3Dspring-26&amp;s='), 'html: container with kind, provider and the own markup address');
+    holds(!str_contains($page, 'data-shoji-frame') && !str_contains($page, 'data-shoji-allow'), 'html: no iframe attributes');
+    holds(str_contains($page, '>Load form</a>'), 'html: button like a form');
+    holds(str_contains($page, 'The form is loaded only after you click, with scripts from Brevo. Brevo then learns your IP address. <a class="shoji-privacy" href="https://site.example/datenschutz">Privacy policy</a>'), 'html: note with name, company and privacy link');
+    foreach (array_merge($attrs($page, 'src'), $attrs($page, 'href'), $attrs($page, 'data-shoji-html')) as $url) {
+        holds(str_starts_with($url, 'https://site.example/'), "html: every address points to the site itself: $url");
+    }
+    $scriptList = explode(' ', $attrs($page, 'data-shoji-script')[0]);
+    expect(2, count($scriptList), 'html: two provider scripts, space-separated');
+    holds(str_starts_with($scriptList[0], 'https://site.example/shoji/script/brevo/newsletter?s=') && str_starts_with($scriptList[1], 'https://site.example/shoji/script/brevo/newsletter?n=1&s='), 'html: own script addresses, the second with its index');
+    $styleUrl = $attrs($page, 'data-shoji-style')[0];
+    holds(str_starts_with($styleUrl, 'https://site.example/shoji/style/brevo/newsletter?s='), 'html: own stylesheet address');
+    preg_match_all('~<script\b([^>]*)>(.*?)</script>~is', $page, $scripts, PREG_SET_ORDER);
+    expect(1, count($scripts), 'html: only shoji.js as script tag, no provider script before the click');
+    holds(trim($scripts[0][2]) === '' && preg_match('~\son[a-z]+\s*=|\sstyle\s*=|<link\b~i', $page) === 0, 'html: no inline script, no handler, no style attribute, no stylesheet before the click');
+
+    // The markup: only through the signed address, rendered after the click.
+    $markupUrl = $attrs($page, 'data-shoji-html')[0];
+    $r = $call($markupUrl, $html);
+    expect(200, $r->code(), 'html route answers');
+    expect('text/html', $r->type(), 'as HTML');
+    expect('no-store', $r->header('Cache-Control'), 'markup not cached');
+    expect('noindex, nofollow', $r->header('X-Robots-Tag'), 'markup not indexed');
+    expect('nosniff', $r->header('X-Content-Type-Options'), 'markup nosniff');
+    holds(str_contains($r->body(), 'action="https://abc123.sibforms.com/serve/MUIFAbC"'), 'the site snippet\'s form');
+    holds(str_contains($r->body(), '<input type="hidden" name="CAM" value="spring-26">'), 'a field the snippet fills from signed params arrives filled');
+    expect(404, $call(preg_replace('/s=[0-9a-f]{16}/', 's=0123456789abcdef', $markupUrl), $html)->code(), 'html: wrong signature refused');
+    expect(404, $call(str_replace('spring-26', 'stolen', $markupUrl), $html)->code(), 'html: changed parameter refused');
+    expect(404, $call(preg_replace('/[?&]s=[0-9a-f]{16}/', '', $markupUrl), $html)->code(), 'html: no signature refused');
+    expect(404, $call(str_replace('/html/', '/frame/', $markupUrl), $html)->code(), 'html: signature bound to the kind, no frame for kind html');
+    expect(404, $call(str_replace('/html/', '/go/', $markupUrl), $html)->code(), 'html: no go redirect without a link');
+    $kirby = $app($html);
+    $forged = '/shoji/html/youtube/dQw4w9WgXcQ?s=' . \Shoji\Embed::signer($kirby)->sign('html', 'youtube', 'dQw4w9WgXcQ', '');
+    expect(404, $call($forged, $html)->code(), 'html route serves only kind html, even when signed');
+    $missing = current(array_filter($attrs($page, 'data-shoji-html'), fn ($u) => str_contains($u, '/missing?')));
+    $logged = ini_set('error_log', '/dev/null');
+    expect(404, $call($missing, $html)->code(), 'html: a missing snippet is a 404');
+    ini_set('error_log', (string) $logged);
+    $off = $call($markupUrl, []);
+    holds(!($off instanceof Response && $off->code() === 200), 'html: off, the route serves nothing');
+
+    // Scripts and stylesheet: each through its own signed address, the index signed too.
+    expect('https://sibforms.com/forms/end-form/build/main.js', $call($scriptList[0], $html)->header('Location'), 'first provider script');
+    expect('https://sibforms.com/forms/end-form/build/extra.js', $call($scriptList[1], $html)->header('Location'), 'second provider script');
+    expect('https://sibforms.com/forms/end-form/build/sib-styles.css', $call($styleUrl, $html)->header('Location'), 'provider stylesheet');
+    expect(404, $call(str_replace('?s=', '?n=1&s=', $scriptList[0]), $html)->code(), 'index not covered by the signature refused');
+    expect(404, $call(str_replace('n=1&', 'n=1%0A&', $scriptList[1]), $html)->code(), 'index with a line break refused');
+    expect(404, $call(str_replace('/script/', '/style/', $scriptList[0]), $html)->code(), 'script signature is no stylesheet signature');
+    $third = '/shoji/script/brevo/newsletter?n=2&s=' . \Shoji\Embed::signer($kirby)->sign('script', 'brevo', 'newsletter', 'n=2');
+    expect(404, $call($third, $html)->code(), 'no third script');
+    $styleOfVideo = '/shoji/style/youtube/dQw4w9WgXcQ?s=' . \Shoji\Embed::signer($kirby)->sign('style', 'youtube', 'dQw4w9WgXcQ', '');
+    expect(404, $call($styleOfVideo, $on + ['shoji.providers' => ['youtube' => ['style' => 'https://www.youtube.com/x.css']]])->code(), 'stylesheets only for kind html');
+
+    // Without JavaScript: the bare markup, or the provider's link if there is one.
+    holds(str_contains($page, 'class="shoji-button" href="' . esc($markupUrl) . '"'), 'html: without a link the button leads to the markup itself');
+    $linked = $on + ['shoji.providers' => ['brevo' => $brevo + ['link' => 'https://sibforms.com/serve/MUIFAbC']]];
+    $go = current(array_filter($attrs($render($linked), 'href'), fn ($u) => str_contains($u, '/shoji/go/brevo/newsletter')));
+    expect('https://sibforms.com/serve/MUIFAbC?cam=spring-26', $call($go, $linked)->header('Location'), 'html: link through the go route');
+    $offPage = $render(['shoji.providers' => ['brevo' => $brevo + ['link' => 'https://sibforms.com/serve/MUIFAbC']]]);
+    holds(str_contains($offPage, 'class="shoji-link" href="https://sibforms.com/serve/MUIFAbC?cam=spring-26"') && !str_contains($offPage, 'sib-form'), 'html off: a plain link, no markup');
+    holds(!str_contains($render(['shoji.providers' => ['brevo' => $brevo]]), '<a'), 'html off without a link: nothing');
+
+    // Open mode: the markup right away, provider files through own addresses.
+    file_put_contents($tmp . '/site/templates/home.php', "<?php snippet('shoji/embed', ['provider' => 'brevo', 'id' => 'newsletter', 'open' => true]) ?>");
+    $open = $render($html);
+    holds(str_contains($open, '<div class="shoji-markup"><div class="sib-form">'), 'html open: the markup in the page');
+    holds(str_contains($open, '<link rel="stylesheet" href="https://site.example/shoji/style/brevo/newsletter?s='), 'html open: stylesheet through the own address');
+    expect(2, preg_match_all('~<script src="https://site\.example/shoji/script/brevo/newsletter\?[^"]+" defer></script>~', $open), 'html open: both scripts through own addresses, deferred');
+    holds(!str_contains($open, 'data-shoji '), 'html open: no placeholder');
 
     echo "KirbyTest: $checks checks passed\n";
 } catch (Throwable $e) {

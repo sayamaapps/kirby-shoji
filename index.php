@@ -26,8 +26,9 @@ use Shoji\Thumbs;
  * and the (video:) tag behave exactly like Kirby's, and the routes answer 404.
  *
  * Nothing in the page names the provider's host: the preview image, the
- * iframe, an extra script and the plain link all point to this site
- * (/shoji/…, signed) and are redirected or served from there.
+ * iframe, the markup of kind 'html', extra scripts and stylesheets and the
+ * plain link all point to this site (/shoji/…, signed) and are redirected or
+ * served from there.
  *
  * Defaults are passed as fallback values directly at each option call, NOT
  * in an 'options' block (Kirby would file them under sayamaapps.shoji.active
@@ -95,13 +96,33 @@ function shoji_route(string $kind, string $provider, string $id): Response|false
     $notFound = fn () => new Response('Not found', 'text/plain', 404, ['X-Robots-Tag' => 'noindex', 'Cache-Control' => 'no-store']);
 
     $signature = get('s');
-    $encoded = $kind === 'frame' || $kind === 'go' ? get('p', '') : '';
-    if (!is_string($signature) || !is_string($encoded)) {
+    $encoded = in_array($kind, ['frame', 'go', 'html'], true) ? get('p', '') : '';
+    // The second and later script or stylesheet: their index is signed instead of parameters.
+    $index = in_array($kind, ['script', 'style'], true) ? get('n', '0') : '0';
+    if (!is_string($signature) || !is_string($encoded) || !is_string($index) || !preg_match('/^(?:0|[1-9]\d?)\z/', $index)) {
         return $notFound();
     }
     $embed = Embed::make($kirby, $provider, $id, Embed::decodeParams($encoded));
-    if ($embed === null || !Embed::signer($kirby)->verify($signature, $kind, $provider, $id, $encoded)) {
+    $signed = $index !== '0' ? Embed::encodeIndex((int) $index) : $encoded;
+    if ($embed === null || !Embed::signer($kirby)->verify($signature, $kind, $provider, $id, $signed)) {
         return $notFound();
+    }
+
+    if ($kind === 'html') {
+        // The site's own markup, rendered now (after the click), never cached:
+        // parameters may differ on the next click.
+        $html = $embed->html();
+        if ($html === null) {
+            if ($embed->snippet() !== null) {
+                error_log('Shoji: the snippet ' . $embed->snippet() . ' of provider ' . $provider . ' is missing or empty');
+            }
+            return $notFound();
+        }
+        return new Response($html, 'text/html', 200, [
+            'Cache-Control'          => 'no-store',
+            'X-Robots-Tag'           => 'noindex, nofollow',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     if ($kind === 'thumb') {
@@ -122,7 +143,7 @@ function shoji_route(string $kind, string $provider, string $id): Response|false
         ]);
     }
 
-    $target = $embed->target($kind);
+    $target = $embed->target($kind, (int) $index);
     if ($target === null) {
         return $notFound();
     }
@@ -167,7 +188,7 @@ App::plugin('sayamaapps/shoji', [
 
     'routes' => [
         [
-            'pattern' => 'shoji/(thumb|frame|script|go)/(:any)/(:any)',
+            'pattern' => 'shoji/(thumb|frame|script|style|html|go)/(:any)/(:any)',
             'method'  => 'GET',
             'action'  => fn (string $kind, string $provider, string $id) => shoji_route($kind, $provider, $id),
         ],

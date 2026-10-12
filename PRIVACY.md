@@ -37,11 +37,25 @@ frame.
 Shoji does not remember the click: no cookie, no storage. On the next page,
 and on the next visit, the visitor is asked again.
 
+## HTML forms (kind `html`)
+
+For a form whose markup the site keeps itself (a Brevo sign-up form, say),
+the page holds only the placeholder. After the click the browser fetches the
+form's markup from the site (`/shoji/html/…`, signed), then the provider's
+stylesheets and scripts (Brevo: from `sibforms.com`, through the site's
+`/shoji/style|script/…` addresses). From then on the provider receives what a
+browser sends with every request. What the visitor types into the form
+reaches the provider only when the form is submitted, together with hidden
+fields the site added (a campaign key, for example). A site script that keeps
+such a key in the browser's storage is the site's own, not Shoji's, and needs
+its own mention in the privacy policy.
+
 ## Without JavaScript
 
 The button is a plain link. It leads (through the site's `/shoji/go/…`
 address) to the content on the provider's website, like any other external
-link.
+link. For an HTML form without such a page it leads to the form's bare
+markup on the site, which submits to the provider.
 
 ## Stored on the server
 

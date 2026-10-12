@@ -1,9 +1,9 @@
 {
     "name": "sayamaapps/kirby-shoji",
-    "description": "Click-to-load for Kirby CMS: YouTube, Vimeo and Digistore24 embeds stay behind a placeholder with a preview image from your own server until the visitor clicks. No third-party host in the page, no cookies, no inline script.",
+    "description": "Click-to-load for Kirby CMS: YouTube, Vimeo, Digistore24 and HTML forms (Brevo) stay behind a placeholder with a preview image from your own server until the visitor clicks. No third-party host in the page, no cookies, no inline script.",
     "type": "kirby-plugin",
     "license": "MIT",
-    "keywords": ["kirby", "kirby-plugin", "kirby-5", "privacy", "gdpr", "youtube", "vimeo", "click-to-load", "embed", "facade"],
+    "keywords": ["kirby", "kirby-plugin", "kirby-5", "privacy", "gdpr", "youtube", "vimeo", "click-to-load", "embed", "facade", "brevo", "forms"],
     "homepage": "https://github.com/simsimmal/kirby-shoji",
     "authors": [
         {
