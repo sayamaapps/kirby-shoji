@@ -93,13 +93,13 @@ An invalid id or an unknown address prints nothing.
 
 The container carries the kind (`shoji-video`, `shoji-form`, `shoji-content`, `shoji-html`) and the provider (`shoji-youtube` …). The script tag comes once per page, with the first placeholder. After the click the container gets `shoji-loading`, then an `<iframe class="shoji-frame">`; once the frame has loaded (or after 5 seconds) the placeholder content is removed and the container has `shoji-opened`. Kind `html` gets a `<div class="shoji-markup">` with the site's markup instead of the iframe.
 
-A starting point for the CSS:
+A starting point for the CSS. Button and note stay in the flow: when the note needs more room than 16:9 leaves (narrow screen, large text), the box grows instead of laying the note over the button or above the box. Don't add `overflow: hidden` to `.shoji`, the box would no longer grow.
 
 ```css
-.shoji { position: relative; aspect-ratio: 16 / 9; cursor: pointer; background: #111; }
+.shoji { position: relative; aspect-ratio: 16 / 9; display: grid; grid-template-rows: minmax(3rem, 1fr) auto; cursor: pointer; background: #111; }
 .shoji-thumb, .shoji-frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0; }
-.shoji-button { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
-.shoji-note { position: absolute; inset: auto 0 0; margin: 0; padding: .5rem; font-size: .75rem; color: #fff; background: rgb(0 0 0 / .6); }
+.shoji-button { position: relative; display: grid; place-items: center; color: #fff; }
+.shoji-note { position: relative; margin: 0; padding: .5rem; font-size: .75rem; color: #fff; background: rgb(0 0 0 / .6); }
 .shoji-loading > :not(.shoji-frame) { opacity: .4; }
 .shoji-form, .shoji-html { aspect-ratio: auto; }   /* a form has no fixed ratio */
 .shoji-html .shoji-button, .shoji-html .shoji-note { position: static; }
