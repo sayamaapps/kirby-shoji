@@ -11,6 +11,45 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [1.2.0] — unreleased
+
+### Added
+
+- Option `shoji.open`: a switch per provider, e.g. `['brevo' => true]`. A
+  provider switched on loads with the page, without placeholder, exactly as
+  a call with `open => true` (still through Shoji's own addresses). For
+  built-in and own providers; there is no switch for all at once. Unknown
+  provider names and values other than `true`/`false` are ignored and logged
+  (`Shoji: ignoring shoji.open for …`), once per request.
+- A call's own `open` wins in both directions: `false` keeps the placeholder
+  although the provider is switched on, `true` opens without a switch (as
+  before). The video block and `(video:)` have no `open` and follow the
+  switch.
+- `$site->shojiOpen('<provider>')`: whether the provider loads with the page
+  (Shoji on and switched on), so a privacy policy can pick its text by
+  itself; README example as a snippet and a KirbyTag. `Embed::open()` for
+  sites with their own markup.
+- **[privacy text]** DATENSCHUTZ.md: a version "sofort geladen" of every
+  text block (videos and other iframe content, forms in an iframe, HTML
+  forms): what reaches the provider when the page loads, the legal basis left
+  to the operator; operator notes on `shoji.open` and on checking a page.
+  PRIVACY.md: the same in English. Existing blocks unchanged apart from a
+  pointer to the new versions and one sentence in the note on `open`. Sites
+  that switch no provider on need not change their privacy policy.
+
+### Changed
+
+- User agent of the preview image fetch: `kirby-shoji/1.2`.
+
+### Unchanged
+
+- Without `shoji.open` every page is the same byte for byte (tested). No
+  page contacts a provider earlier unless the site switches that provider on
+  itself, as `open => true` could since 1.0; hence a minor version.
+- A value of `open` that is not a bool still means "not given" — with a
+  switch, the switch now decides.
+- Built-in providers and their addresses; `shoji.js`.
+
 ## [1.1.0] — 2026-10-13
 
 ### Added

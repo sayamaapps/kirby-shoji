@@ -7,6 +7,7 @@ Click-to-load for [Kirby CMS](https://getkirby.com) 5: YouTube, Vimeo, Digistore
 - **No third-party host in the page.** Before the click the HTML names no provider at all, not even in a `data-` attribute. The preview image, the iframe address, the markup of an HTML form, the provider's scripts and stylesheets and the plain link all point to this site (`/shoji/…`) and are served or redirected from there. A checker that reads the HTML (and a visitor's browser) sees only your own server.
 - **Preview images from your own server.** The server fetches the image once, keeps it in `storage/shoji/`, and serves it. The visitor's browser never asks YouTube or Vimeo.
 - **Nothing is remembered.** No cookie, no browser storage: every page asks again. (Version 1 deliberately does not store consent on the visitor's device.)
+- **Per provider, if the site wants.** `shoji.open` loads one provider's content with the page (a sign-up form on its own sign-up page, say) while everything else stays behind the click. Off unless configured; see [Loading right away](#loading-right-away-shojiopen).
 - **Works without JavaScript.** The button is a real link; without the script it leads to the video on the provider's site.
 - **Content Security Policy friendly.** One external, deferred script from Kirby's plugin assets. No inline script, no inline event handler, no style attribute. See [Content Security Policy](#content-security-policy) for the directives.
 - **Takes over Kirby's video block and `(video:)` tag.** A YouTube or Vimeo address pasted in the Panel becomes a placeholder by itself.
@@ -74,7 +75,7 @@ In the Panel, the video block and `(video: https://youtu.be/…)` need nothing: 
 | `buttonClass` | Extra classes on the button. |
 | `frameClass` | Extra classes on the iframe (some providers' scripts look for one). |
 | `attrs` | Extra container attributes; only `data-*`, `aria-*` and `id` are taken. |
-| `open` | `true`: the content right away, without placeholder — for a site that remembers consent itself. The addresses are still Shoji's own (kind `html`: the snippet's markup is printed as it is, so its form address names the provider). |
+| `open` | `true`: the content right away, without placeholder — for a site that remembers consent itself. The addresses are still Shoji's own (kind `html`: the snippet's markup is printed as it is, so its form address names the provider). `false`: the placeholder, even if `shoji.open` switches the provider on. Not given (or not a bool): the provider's switch in [`shoji.open`](#loading-right-away-shojiopen). |
 
 An invalid id or an unknown address prints nothing.
 
@@ -143,6 +144,7 @@ $embed->styleUrls();    // kind 'html': own addresses of the provider's styleshe
 $embed->linkUrl();      // own address of the plain link
 $embed->allow();        // value for the iframe's allow attribute
 $embed->size();         // [1280, 720] or null
+$embed->open();         // true if shoji.open switches this provider on (load with the page)
 ```
 
 Keep `data-shoji` and the `data-shoji-*` attributes on the container so `shoji.js` can open it (`data-shoji-script` and `data-shoji-style` take several own addresses separated by a space), print `shoji_script_tag()` once, and keep the note with the privacy link. `shoji_i18n()` sets the language before you use `t('shoji.<key>')` or `Shoji\I18n::t()`.
@@ -157,6 +159,7 @@ All keys are read as `shoji.<name>`, flat or nested. `null` counts as "not set".
 | `privacy` | first existing page of `datenschutz`, `datenschutzerklaerung`, `privacy`, `privacy-policy` | Privacy policy for the link in the note: a URL, a page id, or a closure returning either. `false`: no link. |
 | `texts` | — | Replaces single strings: `['de' => ['note.video' => 'Das Video lädt erst nach Deinem Klick von {name}.']]`, or flat for every language. Keys in [`translations/en.php`](translations/en.php). |
 | `language` | site language | `en` or `de`. Otherwise the current language of a multi-language site, its default language, the first two letters of Kirby's `locale`, English. |
+| `open` | — | Load a provider's content with the page instead of after the click: `['brevo' => true]`. Built-in and own providers; a call's own `open` wins. Unknown names and values other than `true`/`false` are ignored and logged. See [Loading right away](#loading-right-away-shojiopen). |
 | `providers` | — | Add providers, change fields of a built-in one, or remove one with `false`. See below. |
 | `url` | — | Closure `fn (string $url, Shoji\Embed $embed, string $kind): string`, called when a route redirects (`$kind` = `frame`, `go`, `script` or `style`). Changes the provider address at click time, e.g. adds a campaign from a first-party cookie. Must return an `https` address, otherwise the route answers 404. |
 | `script` | `true` | `false`: the snippet prints no script tag; the site bundles `assets/shoji.js` itself (`shoji_script_url()` has the address). |
@@ -305,6 +308,62 @@ document.addEventListener('shoji:inserted', function (event) {
 
 Without JavaScript the button leads to `link` (Brevo's hosted form, which loses the campaign) or, without one, to `/shoji/html/…` itself: the bare form, which still submits to Brevo. With Shoji switched off the snippet prints the plain `link`, or nothing.
 
+## Loading right away (`shoji.open`)
+
+A page whose very purpose is a form (a newsletter sign-up page, say) loses sign-ups to an extra click before the form. `shoji.open` lets the site decide per provider:
+
+```php
+'shoji.open' => [
+    'brevo' => true,    // the sign-up form loads with the page
+    // YouTube, Vimeo, Digistore24 …: not listed, so behind the click as before
+],
+```
+
+- **Per provider**, built-in or own (`shoji.providers`). There is no switch for all providers at once. Without the option nothing changes.
+- **A single call wins** in both directions: `snippet('shoji/embed', [… 'open' => false])` keeps the placeholder although the provider is switched on; `'open' => true` opens without a switch, as before. The video block and `(video:)` have no `open` of their own and follow the switch.
+- **Typos open nothing.** An unknown provider name or a value other than `true`/`false` is ignored and written to PHP's error log (`Shoji: ignoring shoji.open for …`).
+- **Shoji off** (`shoji.active` not `true`): the switch does nothing; the snippet prints its plain link.
+
+What "right away" means — the same output as a call with `open => true`:
+
+| Kind | In the page | The browser contacts the provider |
+|---|---|---|
+| `video`, `form`, `content` | `<iframe src="/shoji/frame/…" loading="lazy">`, the provider's `script` as `<script src="/shoji/script/…" defer>` | when the iframe comes near the visible area (on the first screen: with the page), redirected from the site; scripts with the page |
+| `html` | the snippet's markup (its form `action` names the provider's host), stylesheets as `<link href="/shoji/style/…">`, scripts as `<script src="/shoji/script/…" defer>` | with the page |
+
+No preview image, no button and no note: the page itself no longer tells the visitor before anything loads, so the privacy policy has to. A checker that reads the HTML sees an iframe or script pointing to the site; for kind `html` it sees the provider's host in the form.
+
+### The privacy policy follows the switch
+
+`$site->shojiOpen('brevo')` is `true` if the provider's content loads with the page (Shoji on and `shoji.open` switches it on), `false` if it waits for the click. A single call's `open` does not count. Use it to pick the matching text, so a change in `config.php` changes the privacy policy as well. The texts come from [DATENSCHUTZ.md](DATENSCHUTZ.md) (both versions per block); the wording is the site's.
+
+`site/snippets/privacy/brevo.php`:
+
+```php
+<?php if ($site->shojiOpen('brevo')) : ?>
+<p>Das Anmeldeformular von Brevo wird beim Aufruf der Seite geladen. […]</p>
+<?php else : ?>
+<p>Das Anmeldeformular von Brevo wird nicht beim Aufruf der Seite geladen, sondern erst nach Ihrem Klick. […]</p>
+<?php endif ?>
+```
+
+In the privacy page's template `<?php snippet('privacy/brevo') ?>`, or as a KirbyTag in its text, `(privacy: brevo)` on a line of its own:
+
+```php
+// site/plugins/privacy/index.php
+Kirby::plugin('mysite/privacy', [
+    'tags' => [
+        'privacy' => [
+            'html' => fn (Kirby\Text\KirbyTag $tag): string => preg_match('/^[a-z0-9-]+$/', $tag->value)
+                ? snippet('privacy/' . $tag->value, [], true)
+                : '',
+        ],
+    ],
+]);
+```
+
+With Kirby's page cache on, empty it after changing `shoji.open`: a cached privacy page does not notice a change in `config.php`.
+
 ## Content Security Policy
 
 Shoji needs no `'unsafe-inline'`, but the policy must allow the first step of each redirect, which is the site itself:
@@ -341,7 +400,7 @@ Not covered: content a template embeds itself (`<iframe>` in a template, Kirby's
 
 ## Privacy
 
-See [PRIVACY.md](PRIVACY.md) for what happens before and after the click, and [DATENSCHUTZ.md](DATENSCHUTZ.md) for the German technical text block for privacy policies. They describe the implementation and are not legal advice.
+See [PRIVACY.md](PRIVACY.md) for what happens before and after the click (and with the page, for providers switched on with `shoji.open`), and [DATENSCHUTZ.md](DATENSCHUTZ.md) for the German technical text blocks for privacy policies, each in a version "after the click" and "right away". They describe the implementation and are not legal advice.
 
 ## Development
 

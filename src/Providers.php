@@ -40,6 +40,11 @@ use Closure;
  *       'youtube' => ['embed' => 'https://www.youtube-nocookie.com/embed/{id}?autoplay=1&rel=0'],
  *       'spotify' => ['name' => 'Spotify', …],
  *   ]
+ *
+ * `shoji.open` loads a provider's content with the page instead of after
+ * the click (see open()):
+ *
+ *   'shoji.open' => ['brevo' => true]
  */
 final class Providers
 {
@@ -139,6 +144,41 @@ final class Providers
             }
         }
         return $providers;
+    }
+
+    /**
+     * The per-provider switch `shoji.open`: provider name => true (the
+     * content loads with the page, no placeholder) or false (behind the
+     * click, as without the option). Only names in $providers (built-in and
+     * `shoji.providers`, after merging) and boolean values are taken; the
+     * rest is dropped and logged, so a typo never opens anything. There is
+     * deliberately no switch for every provider at once.
+     *
+     * @param array<string, array> $providers Providers::all()
+     * @return array<string, bool>
+     */
+    public static function open(mixed $configured, array $providers): array
+    {
+        if ($configured === null) {
+            return [];
+        }
+        if (!is_array($configured)) {
+            error_log('Shoji: ignoring shoji.open (must be an array of provider name => true|false)');
+            return [];
+        }
+        $open = [];
+        foreach ($configured as $name => $value) {
+            if (!is_string($name) || !isset($providers[$name])) {
+                error_log('Shoji: ignoring shoji.open for ' . var_export($name, true) . ' (no such provider)');
+                continue;
+            }
+            if (!is_bool($value)) {
+                error_log("Shoji: ignoring shoji.open for $name (value must be true or false)");
+                continue;
+            }
+            $open[$name] = $value;
+        }
+        return $open;
     }
 
     /** What is wrong with a definition, or null. */

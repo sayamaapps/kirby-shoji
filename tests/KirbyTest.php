@@ -9,7 +9,9 @@
  * `shoji.texts`, the privacy link, that a site's own
  * site/snippets/shoji/embed.php wins, and kind 'html' (a Brevo form from a
  * site snippet: nothing of it in the page, served only by its signed
- * address, scripts and stylesheets through their own addresses).
+ * address, scripts and stylesheets through their own addresses), and
+ * `shoji.open` (a switch per provider, the call's own `open` winning in
+ * both directions, invalid entries logged) with `$site->shojiOpen()`.
  *   php tests/KirbyTest.php
  */
 $base = dirname(__DIR__);
@@ -335,6 +337,76 @@ PHP);
     holds(str_contains($open, '<link rel="stylesheet" href="https://site.example/shoji/style/brevo/newsletter?s='), 'html open: stylesheet through the own address');
     expect(2, preg_match_all('~<script src="https://site\.example/shoji/script/brevo/newsletter\?[^"]+" defer></script>~', $open), 'html open: both scripts through own addresses, deferred');
     holds(!str_contains($open, 'data-shoji '), 'html open: no placeholder');
+
+    // 8. shoji.open: a switch per provider; a call's own open wins in both directions.
+    file_put_contents($tmp . '/site/templates/home.php', <<<'PHP'
+<!doctype html><html><body>
+<?php snippet('shoji/embed', ['provider' => 'brevo', 'id' => 'newsletter', 'params' => ['cam' => 'spring-26']]) ?>
+<?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'open' => false]) ?>
+<?php snippet('shoji/embed', ['provider' => 'vimeo', 'id' => '76979871', 'open' => true]) ?>
+<?php snippet('shoji/embed', ['provider' => 'youtube', 'id' => 'dQw4w9WgXcQ']) ?>
+<?= $page->text()->kirbytext() ?>
+<?= $page->blocks()->toBlocks() ?>
+</body></html>
+PHP);
+    /** Providers in page order: [opened, placeholders]. */
+    $split = function (string $page): array {
+        preg_match_all('~<div class="shoji shoji-[a-z]+ shoji-([a-z0-9-]+) shoji-opened"~', $page, $opened);
+        preg_match_all('~<div class="shoji shoji-[a-z]+ shoji-([a-z0-9-]+)" data-shoji ~', $page, $closed);
+        return [$opened[1], $closed[1]];
+    };
+    $before = $render($html);
+    // Without the option: as before, every call without its own open behind the click.
+    expect([['vimeo'], ['brevo', 'digistore', 'youtube', 'youtube', 'vimeo', 'youtube']], $split($before), 'open: without the option only the call with open => true opens');
+    expect($before, $render($html + ['shoji.open' => []]), 'open: an empty option changes nothing, byte for byte');
+    expect($before, $render($html + ['shoji.open' => null]), 'open: null counts as not set');
+
+    // Switched on for brevo, youtube and digistore.
+    $switched = $html + ['shoji.open' => ['brevo' => true, 'youtube' => true, 'digistore' => true]];
+    $page = $render($switched);
+    expect([['brevo', 'vimeo', 'youtube', 'youtube', 'youtube'], ['digistore', 'vimeo']], $split($page), 'open: switch per provider; open => false keeps a placeholder, open => true opens without a switch; tag and block follow the switch');
+    holds(str_contains($page, '<div class="shoji-markup"><div class="sib-form">') && str_contains($page, 'value="spring-26"'), 'open: brevo\'s markup in the page right away, signed params filled');
+    holds(str_contains($page, '<link rel="stylesheet" href="https://site.example/shoji/style/brevo/newsletter?s='), 'open: brevo stylesheet through the own address');
+    expect(2, preg_match_all('~<script src="https://site\.example/shoji/script/brevo/newsletter\?[^"]+" defer></script>~', $page), 'open: brevo scripts through own addresses');
+    expect(4, preg_match_all('~<iframe class="shoji-frame" src="https://site\.example/shoji/frame/(?:youtube|vimeo)/~', $page), 'open: iframes right away, through own addresses');
+    holds(str_contains($page, 'src="https://site.example/shoji/frame/youtube/aqz-KE-bpKQ?s='), 'open: the video block opens with the switch');
+    holds(str_contains($page, 'data-shoji-frame="https://site.example/shoji/frame/digistore/123456'), 'open: open => false wins over the switch');
+    holds(!str_contains($page, '<iframe class="shoji-frame" src="https://site.example/shoji/frame/digistore'), 'open: no digistore iframe');
+    expect(1, substr_count($page, '/shoji.js"'), 'open: shoji.js once, for the remaining placeholders');
+    holds(preg_match(FOREIGN, preg_replace('~<div class="shoji-markup">.*?</form></div></div></div>~s', '', $page)) === 0, 'open: apart from brevo\'s own markup no provider host in the page');
+    $iframes = $attrs($page, 'src');
+    $frame = current(array_filter($iframes, fn ($u) => str_contains($u, '/shoji/frame/youtube/dQw4w9WgXcQ')));
+    expect('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1', $call($frame, $switched)->header('Location'), 'open: the iframe address redirects like after a click');
+
+    // Unknown providers and non-bool values: ignored and logged, the page as without the option.
+    $log = tempnam(sys_get_temp_dir(), 'shoji-log');
+    $logged = ini_set('error_log', $log);
+    expect($before, $render($html + ['shoji.open' => ['nope' => true, 'youtube' => 'yes', 'vimeo' => 1]]), 'open: invalid entries open nothing');
+    ini_set('error_log', (string) $logged);
+    $lines = (string) file_get_contents($log);
+    unlink($log);
+    holds(str_contains($lines, "Shoji: ignoring shoji.open for 'nope' (no such provider)"), 'open: unknown provider logged');
+    holds(str_contains($lines, 'Shoji: ignoring shoji.open for youtube (value must be true or false)') && str_contains($lines, 'shoji.open for vimeo (value must'), 'open: non-bool values logged');
+    expect(1, substr_count($lines, "'nope'"), 'open: logged once per request, not once per embed');
+
+    // Shoji off: the switch opens nothing.
+    $off = $render(['shoji.providers' => ['brevo' => $brevo], 'shoji.open' => ['brevo' => true, 'youtube' => true]]);
+    holds(!str_contains($off, 'sib-form') && !str_contains($off, 'shoji-opened') && !str_contains($off, '/shoji/'), 'open: off, nothing opens');
+
+    // $site->shojiOpen(): the switch in effect, for a privacy policy that follows it.
+    $site = $app($switched)->site();
+    expect(true, $site->shojiOpen('brevo'), 'shojiOpen: switched on (own provider)');
+    expect(true, $site->shojiOpen('youtube'), 'shojiOpen: switched on (built-in provider)');
+    expect(false, $site->shojiOpen('vimeo'), 'shojiOpen: no switch, behind the click (a single call\'s open does not count)');
+    expect(false, $site->shojiOpen('nope'), 'shojiOpen: unknown provider');
+    expect(true, shoji_embed('brevo', 'newsletter')->open(), 'Embed::open(): the provider\'s switch');
+    expect(false, shoji_embed('vimeo', '76979871')->open(), 'Embed::open(): no switch');
+    expect(false, $app($html + ['shoji.open' => ['brevo' => false]])->site()->shojiOpen('brevo'), 'shojiOpen: switched off explicitly');
+    expect(false, $app($html)->site()->shojiOpen('brevo'), 'shojiOpen: without the option');
+    $logged = ini_set('error_log', '/dev/null');
+    expect(false, $app($html + ['shoji.open' => ['brevo' => 'yes']])->site()->shojiOpen('brevo'), 'shojiOpen: a non-bool value counts as off');
+    ini_set('error_log', (string) $logged);
+    expect(false, $app(['shoji.providers' => ['brevo' => $brevo], 'shoji.open' => ['brevo' => true]])->site()->shojiOpen('brevo'), 'shojiOpen: Shoji off, nothing loads right away');
 
     echo "KirbyTest: $checks checks passed\n";
 } catch (Throwable $e) {

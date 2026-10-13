@@ -186,6 +186,17 @@ App::plugin('sayamaapps/shoji', [
         'blocks/video' => __DIR__ . '/snippets/blocks/video.php',
     ],
 
+    /**
+     * $site->shojiOpen('brevo'): true if this provider's content loads with
+     * the page (Shoji on, `shoji.open` switches it on), false if it waits for
+     * the click. For a privacy policy that follows the switch by itself.
+     */
+    'siteMethods' => [
+        'shojiOpen' => function (string $provider): bool {
+            return Options::opens($this->kirby(), $provider);
+        },
+    ],
+
     'routes' => [
         [
             'pattern' => 'shoji/(thumb|frame|script|style|html|go)/(:any)/(:any)',

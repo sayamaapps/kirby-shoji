@@ -5,6 +5,12 @@ block for privacy policies, which is the authoritative version. Both describe
 the implementation. They are not legal advice. Each operator has to determine
 the legal basis and the wording for their own site.
 
+Everything below "Before the click" up to "Without JavaScript" is the default.
+A provider the site switches on with `shoji.open` (or a single call with
+`open => true`) skips the placeholder; see [Loaded right away](#loaded-right-away-shojiopen).
+DATENSCHUTZ.md has each text block in both versions, "after the click" and
+"right away"; `$site->shojiOpen('<provider>')` tells which one applies.
+
 ## Before the click
 
 The visitor's browser talks only to the site. The page shows a placeholder
@@ -49,6 +55,36 @@ reaches the provider only when the form is submitted, together with hidden
 fields the site added (a campaign key, for example). A site script that keeps
 such a key in the browser's storage is the site's own, not Shoji's, and needs
 its own mention in the privacy policy.
+
+## Loaded right away (`shoji.open`)
+
+Only for providers listed with `true` in `shoji.open` (or a single call with
+`open => true`). Without the option nothing loads before the click. There is
+no placeholder, no preview image and no note: the page does not tell the
+visitor before the content loads, only the privacy policy does.
+
+- **Videos and other iframe content** (YouTube, Vimeo …): the page holds an
+  iframe pointing to the site (`/shoji/frame/…`, `loading="lazy"`). When it
+  comes near the visible area (on the first screen: with the page) the
+  browser asks the site, is redirected to the provider and loads the player,
+  which loads further files from the provider's servers, whether or not the
+  visitor plays the video.
+- **Forms in an iframe** (Digistore24 …): the provider's script loads with the
+  page wherever the form is (`/shoji/script/…`, redirected) and runs in the
+  page itself, not only in the form's frame; the form's iframe loads like a
+  video's.
+- **HTML forms** (kind `html`, Brevo …): the form's markup is part of the page
+  (its `action` names the provider's host), the provider's stylesheets and
+  scripts load with the page (through `/shoji/style|script/…`, redirected) and
+  the scripts run in the page. What the visitor types reaches the provider
+  when the form is submitted.
+
+In each case the provider receives what a browser sends with every request
+(IP address, browser details, the site's address as referrer) without a
+click, whether or not the visitor uses the content, and its own privacy
+policy applies. Whether and on which legal basis a site loads a provider
+without a click is the site's decision and has to be checked for that site;
+Shoji makes no statement about it.
 
 ## Without JavaScript
 

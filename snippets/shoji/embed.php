@@ -30,7 +30,9 @@
  * @var string|null       $frameClass extra classes on the iframe
  * @var array|null        $attrs   extra container attributes (data-*, aria-*, id only)
  * @var bool|null         $open    true: the content right away, without placeholder
- *                                 (for a site that remembers consent itself)
+ *                                 (for a site that remembers consent itself);
+ *                                 false: placeholder; not given (or no bool):
+ *                                 the provider's switch in `shoji.open`
  */
 
 use Shoji\I18n;
@@ -56,6 +58,8 @@ if (!Options::active(kirby())) {
 
 $classes = trim('shoji shoji-' . $embed->kind() . ' shoji-' . $embed->provider . ' ' . ($class ?? ''));
 $frameTitle = $embed->title ?? $t('frame', $names);
+// The call decides if it says true or false; otherwise the provider's switch.
+$open = is_bool($open ?? null) ? $open : $embed->open();
 $extra = [];
 foreach (is_array($attrs ?? null) ? $attrs : [] as $name => $value) {
     if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
@@ -63,7 +67,7 @@ foreach (is_array($attrs ?? null) ? $attrs : [] as $name => $value) {
     }
 }
 
-if (($open ?? false) === true && $embed->kind() === 'html') : ?>
+if ($open && $embed->kind() === 'html') : ?>
 <div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php foreach ($embed->styleUrls() as $style) : ?><link rel="stylesheet" href="<?= esc($style) ?>"><?php endforeach ?>
   <div class="shoji-markup"><?= $embed->html() ?></div>
@@ -71,7 +75,7 @@ if (($open ?? false) === true && $embed->kind() === 'html') : ?>
 </div>
 <?php
     return;
-elseif (($open ?? false) === true) : ?>
+elseif ($open) : ?>
 <div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
   <iframe class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>" src="<?= esc($embed->frameUrl()) ?>" title="<?= esc($frameTitle) ?>" allow="<?= esc($embed->allow()) ?>" allowfullscreen loading="lazy"></iframe>

@@ -80,6 +80,16 @@ final class Embed
         return in_array($kind, Providers::KINDS, true) ? $kind : 'content';
     }
 
+    /**
+     * The provider's switch in `shoji.open`: true if its content loads with
+     * the page instead of after the click. A single call's `open` (snippet
+     * data) wins over it in both directions.
+     */
+    public function open(): bool
+    {
+        return Options::open($this->kirby)[$this->provider] ?? false;
+    }
+
     public function hasThumbnail(): bool
     {
         $thumbnails = $this->definition['thumbnails'] ?? [];

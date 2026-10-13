@@ -13,7 +13,7 @@ final class Http
 {
     public const TIMEOUT = 5;
     public const MAX_BYTES = 5_000_000;
-    public const USER_AGENT = 'Mozilla/5.0 (compatible; kirby-shoji/1.1; +https://github.com/simsimmal/kirby-shoji)';
+    public const USER_AGENT = 'Mozilla/5.0 (compatible; kirby-shoji/1.2; +https://github.com/simsimmal/kirby-shoji)';
 
     /** Tests replace the network: fn (string $url): array{0:int,1:string}. */
     public static ?Closure $fake = null;

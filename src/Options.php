@@ -33,6 +33,30 @@ final class Options
     }
 
     /**
+     * `shoji.open`, checked (Providers::open): provider name => true for
+     * content that loads with the page, false or missing for content behind
+     * the click. Read once per Kirby instance, so a typo is logged once.
+     *
+     * @return array<string, bool>
+     */
+    public static function open(App $kirby): array
+    {
+        static $cache = null;
+        $cache ??= new \WeakMap();
+        return $cache[$kirby] ??= Providers::open(self::get($kirby, 'open'), Embed::providers($kirby));
+    }
+
+    /**
+     * Whether a page loads this provider's content right away: Shoji is on
+     * and `shoji.open` switches the provider on. A single call's `open`
+     * can still differ. Behind `$site->shojiOpen()`.
+     */
+    public static function opens(App $kirby, string $provider): bool
+    {
+        return self::active($kirby) && (self::open($kirby)[$provider] ?? false);
+    }
+
+    /**
      * Language of the visitor-facing text: `shoji.language`, otherwise the
      * language of the current request (multi-language sites), the default
      * language, the first two letters of Kirby's `locale` option, English.
