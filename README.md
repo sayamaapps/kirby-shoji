@@ -411,6 +411,10 @@ composer test                                   # or: sh tests/run.sh
 
 The tests are plain PHP scripts (exit code 0 = pass). `KirbyTest.php` renders a page with every way content gets in and fails if a provider host appears in the HTML before the click; no test needs a network. `node --test tests/*.test.mjs` checks `shoji.js` against a small fake DOM: it opens only Shoji's own `/shoji/frame|html|script|style/…` addresses on the same host, so injected `data-shoji` attributes cannot load a `javascript:` frame, foreign markup or a foreign script; and kind `html` puts the markup in before `shoji:inserted` and the provider's scripts.
 
+## Maintenance
+
+This module is open source under the MIT license and is maintained for the author's own projects. Issues and pull requests are welcome, but there is no support promise and no release schedule. Report security problems privately through GitHub's private vulnerability reporting (the "Report a vulnerability" button on the Security tab).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
