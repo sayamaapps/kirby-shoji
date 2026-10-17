@@ -75,6 +75,35 @@ try {
     expect('https://www.digistore24.com/product/256092', Providers::fill($ds['embed'], '256092', []), 'optional path segment left out');
     expect('https://www.digistore24.com/product/256092', Providers::fill($ds['embed'], '256092', ['form' => 'x/y']), 'unsafe path value dropped, never a path segment');
 
+    // Protected hosts: the host decides, not the form of the address, and not look-alikes
+    foreach ([
+        'https://www.youtube.com/playlist?list=PL1234567890abcdef' => 'youtube', 'https://youtube.com/@gasthausmuster' => 'youtube',
+        'https://m.youtube.com/watch?v=dQw4w9WgXcQ' => 'youtube', 'https://youtu.be/dQw4w9WgXcQ' => 'youtube',
+        'https://www.youtube-nocookie.com/embed/videoseries?list=PL1234567890abcdef' => 'youtube', 'https://music.youtube.com/x' => 'youtube',
+        'HTTPS://WWW.YouTube.com/x' => 'youtube', 'https://www.youtube.com./x' => 'youtube', 'https://user:pw@www.youtube.com:443/x' => 'youtube',
+        '//www.youtube.com/x' => 'youtube', 'ftp://youtu.be/x' => 'youtube', ' https://youtu.be/x ' => 'youtube',
+        'https://vimeo.com/showcase/1/video/123456789' => 'vimeo', 'https://player.vimeo.com/video/12345' => 'vimeo', 'https://www.vimeo.com/12345' => 'vimeo',
+        'https://www.digistore24.com/product/123456' => 'digistore', 'https://checkout.digistore24.com/x' => 'digistore', 'https://digistore24.com/clip.mp4' => 'digistore',
+    ] as $url => $key) {
+        expect($key, Providers::protectedProvider((string) $url), "protected provider of $url");
+        expect(true, Providers::isProtectedHost((string) $url), "protected host: $url");
+    }
+    foreach ([
+        'https://notyoutube.com/watch?v=dQw4w9WgXcQ', 'https://youtube.com.example.org/x', 'https://example.com/?u=youtube.com/watch?v=dQw4w9WgXcQ',
+        'https://example.com/vimeo.com/12345', 'https://evilvimeo.com/12345', 'https://vimeo.com.evil.example/12345', 'https://www.digistore24-scripts.com/x.js',
+        'https://example.com/clip.mp4', 'clip.mp4', 'youtube.com/watch?v=dQw4w9WgXcQ', '/media/youtube.com/x.mp4', '', 'https://', 'https://www.youtube.com@example.org/x',
+    ] as $url) {
+        expect(false, Providers::isProtectedHost($url), "not a protected host: $url");
+    }
+    // The plain link: the address itself, http(s) only, nothing else
+    expect('https://vimeo.com/12345', Providers::plainLink('https://vimeo.com/12345'), 'link: the address itself');
+    expect('https://vimeo.com/12345', Providers::plainLink("  https://vimeo.com/12345\n"), 'link: trimmed');
+    expect('http://vimeo.com/12345', Providers::plainLink('http://vimeo.com/12345'), 'link: http stays http');
+    expect('https://www.youtube.com/x', Providers::plainLink('//www.youtube.com/x'), 'link: scheme-relative becomes https');
+    foreach (['javascript://www.youtube.com/%0aalert(1)', 'ftp://youtu.be/x', 'data://vimeo.com/x', 'https://vimeo.com/a b', "https://vimeo.com/a\nb", 'https://vimeo.com/a"onclick="x' . "\x01", 'https://example.com/x', 'vimeo.com/12345'] as $url) {
+        expect(null, Providers::plainLink($url), "no link for $url");
+    }
+
     // Parameters: names and values cleaned, sorted
     expect(['aff' => 'a b', 'form' => '1'], Providers::params(['form' => 1, 'aff' => 'a b', 'bad-name' => 'x', 'x' => ['array'], 'empty' => '', 'long' => str_repeat('a', 201)]), 'parameters cleaned and sorted');
     expect('https://x.example/e?q=1&aff=a%20b', Providers::fill('https://x.example/e?q=1', 'id', ['aff' => 'a b']), 'query appended with &');

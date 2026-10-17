@@ -11,7 +11,9 @@
  * site snippet: nothing of it in the page, served only by its signed
  * address, scripts and stylesheets through their own addresses), and
  * `shoji.open` (a switch per provider, the call's own `open` winning in
- * both directions, invalid entries logged) with `$site->shojiOpen()`.
+ * both directions, invalid entries logged) with `$site->shojiOpen()`, and
+ * the addresses of a protected provider Shoji cannot embed: the (video:) tag
+ * and the video block print a note and a plain link, never Kirby's iframe.
  *   php tests/KirbyTest.php
  */
 $base = dirname(__DIR__);
@@ -19,6 +21,8 @@ if (!is_file($base . '/vendor/autoload.php')) { fwrite(STDERR, "Composer depende
 require $base . '/vendor/autoload.php';
 
 use Kirby\Cms\App;
+use Kirby\Cms\Block;
+use Kirby\Cms\Html;
 use Kirby\Http\Response;
 use Kirby\Template\Snippet;
 use Shoji\Http;
@@ -407,6 +411,102 @@ PHP);
     expect(false, $app($html + ['shoji.open' => ['brevo' => 'yes']])->site()->shojiOpen('brevo'), 'shojiOpen: a non-bool value counts as off');
     ini_set('error_log', (string) $logged);
     expect(false, $app(['shoji.providers' => ['brevo' => $brevo], 'shoji.open' => ['brevo' => true]])->site()->shojiOpen('brevo'), 'shojiOpen: Shoji off, nothing loads right away');
+
+    // 9. An address on a protected provider's host that Shoji cannot embed: never Kirby's own
+    //    output (an iframe or <video> that loads with the page), for the tag and the block alike.
+    $tagOf = fn (string $url, array $options): string => (string) $app($options)->kirbytext('(video: ' . $url . ')');
+    $blockOf = fn (string $url, array $options): string => (string) $app($options)->snippet('blocks/video', [
+        'block' => new Block(['id' => 'b', 'type' => 'video', 'content' => ['location' => 'web', 'url' => $url]]),
+    ], true);
+    /** The fallback box inside whatever wraps it (the tag's figure, the block's figure). */
+    $box = function (string $html): string {
+        preg_match('~<div class="shoji shoji-fallback[^"]*">.*?</div>~s', $html, $m);
+        return $m[0] ?? '';
+    };
+    $unsupported = [
+        // address                                                       => provider
+        'https://vimeo.com/showcase/1234567/video/123456789'             => 'vimeo',
+        'https://vimeo.com/album/1234567/video/123456789'                => 'vimeo',
+        'https://vimeo.com/12345'                                        => 'vimeo',
+        'https://player.vimeo.com/video/12345'                           => 'vimeo',
+        'https://vimeo.com/123456789/abcdef1234'                         => 'vimeo',
+        'https://www.youtube.com/@gasthausmuster'                        => 'youtube',
+        'https://www.youtube.com/channel/UCBRboOIpQLe33Rwb0l9dqVw'       => 'youtube',
+        'https://m.youtube.com/playlist?list=PL1234567890abcdef'         => 'youtube',
+        'https://WWW.YOUTUBE.COM/@gasthausmuster'                        => 'youtube',
+        '//www.youtube.com/@gasthausmuster'                              => 'youtube',
+        'https://www.digistore24.com/clip.mp4'                           => 'digistore',
+        'https://www.digistore24.com/page/impressum'                     => 'digistore',
+    ];
+    foreach ($unsupported as $url => $provider) {
+        $url = (string) $url;
+        $link = str_starts_with($url, '//') ? 'https:' . $url : $url;
+        $tag = $tagOf($url, $on);
+        $block = $blockOf($url, $on);
+        foreach (['tag' => $tag, 'block' => $block] as $where => $out) {
+            holds(preg_match('~<(?:iframe|video|source|script|img)\b|data-shoji~i', $out) === 0, "fallback $where $url: no iframe, video, script or image, nothing for shoji.js to open");
+            holds(str_contains($out, 'class="shoji shoji-fallback shoji-' . $provider . '"'), "fallback $where $url: the placeholder box");
+            expect([$link], array_values(array_filter($attrs($out, 'href'))), "fallback $where $url: one plain link, to the pasted address");
+            holds(str_contains($out, '>Open on ') && str_contains($out, 'cannot be embedded here. Nothing is loaded from '), "fallback $where $url: link text and note");
+        }
+        expect($box($tag), $box($block), "fallback $url: tag and block print the same box");
+        holds($box($tag) !== '', "fallback $url: box found in the tag");
+        // Off: Kirby's own output, unchanged.
+        holds(!str_contains($tagOf($url, []), 'shoji-fallback') && !str_contains($blockOf($url, []), 'shoji-fallback'), "fallback $url: off, nothing of it");
+    }
+    // The German text; the note in the site's words.
+    $de = $tagOf('https://vimeo.com/12345', $on + ['shoji.language' => 'de']);
+    holds(str_contains($de, '>Auf Vimeo öffnen</a>') && str_contains($de, 'Diese Vimeo-Adresse lässt sich hier nicht einbetten.'), 'fallback: German texts');
+    holds(str_contains($tagOf('https://vimeo.com/12345', $on + ['shoji.texts' => ['fallback' => 'Nicht einbettbar: {name}']]), '<p class="shoji-note">Nicht einbettbar: Vimeo</p>'), 'fallback: shoji.texts');
+    // Caption of the tag and of the block stay.
+    holds(str_contains((string) $app($on)->kirbytext('(video: https://vimeo.com/12345 caption: Tag caption)'), '<figcaption>Tag caption</figcaption>'), 'fallback: tag caption kept');
+    holds(str_contains((string) $app($on)->snippet('blocks/video', ['block' => new Block(['id' => 'b', 'type' => 'video', 'content' => ['location' => 'web', 'url' => 'https://vimeo.com/12345', 'caption' => 'Block caption']])], true), '<figcaption>Block caption</figcaption>'), 'fallback: block caption kept');
+    // A site's own snippet wins over the shipped one.
+    file_put_contents($tmp . '/site/snippets/shoji/fallback.php', '<div class="own-fallback"><?= esc($url) ?></div>');
+    holds(str_contains($tagOf('https://vimeo.com/12345', $on), '<div class="own-fallback">https://vimeo.com/12345</div>') && str_contains($blockOf('https://vimeo.com/12345', $on), '<div class="own-fallback">'), 'fallback: a site\'s own snippet takes over');
+    unlink($tmp . '/site/snippets/shoji/fallback.php');
+
+    // Everything else stays Kirby's: media files, other hosts, look-alikes of a protected host.
+    foreach ([
+        'https://example.com/clip.mp4', 'https://cdn.example.com/clip.webm', 'gasthaus-muster.mp4',
+        'https://youtube.com.example.org/clip.mp4', 'https://example.com/?u=vimeo.com/12345',
+    ] as $url) {
+        expect($tagOf($url, []), $tagOf($url, $on), "other $url: the tag as without Shoji");
+        expect($blockOf($url, []), $blockOf($url, $on), "other $url: the block as without Shoji");
+    }
+    holds(str_contains($tagOf('https://example.com/clip.mp4', $on), '<video'), 'other: a video file on another host is still Kirby\'s <video>');
+
+    // A link is only ever an http(s) address; never a javascript: or data: one.
+    foreach (['javascript://www.youtube.com/%0aalert(1)', 'data://vimeo.com/x', 'https://vimeo.com/ x"onclick="1'] as $url) {
+        $out = $tagOf($url, $on) . $blockOf($url, $on);
+        holds(!str_contains($out, 'href='), "no link for $url");
+        holds(preg_match('~<(?:iframe|video|source|script)\b|onclick~i', $out) === 0, "nothing loaded for $url");
+    }
+
+    // Whatever Kirby would turn into an iframe on a protected host never gets there.
+    $kirby = $app($on);
+    $iframed = 0;
+    foreach ([
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://www.youtube.com/playlist?list=PL1234567890abcdef',
+        'https://www.youtube.com/embed/videoseries?list=PL1234567890abcdef', 'https://youtu.be/dQw4w9WgXcQ?list=PL1234567890abcdef',
+        'https://www.youtube-nocookie.com/embed/videoseries?list=PL1234567890abcdef', 'HTTPS://WWW.YOUTUBE.COM/playlist?list=PL1234567890abcdef',
+        'http://m.youtube.com/playlist?list=PL1234567890abcdef', 'ftp://www.youtube.com/playlist?list=PL1234567890abcdef',
+        '//www.youtube.com/playlist?list=PL1234567890abcdef', 'https://music.youtube.com/playlist?list=PL1234567890abcdef',
+        'https://vimeo.com/76979871', 'https://vimeo.com/12345', 'https://www.vimeo.com/12345', 'https://player.vimeo.com/video/12345',
+        'https://player.vimeo.com/video/76979871?h=abcdef1234',
+        'https://vimeo.com/channels/staffpicks/76979871', 'https://vimeo.com/channels/staffpicks/12345',
+    ] as $url) {
+        try {
+            $core = (string) Html::video($url);
+        } catch (Throwable) {
+            $core = ''; // Kirby refuses the address (a scheme it does not know)
+        }
+        if (str_contains($core, '<iframe')) {
+            $iframed++;
+            holds(shoji_video($kirby, $url) !== null, "Kirby would print an iframe for $url; Shoji must not leave it to Kirby");
+        }
+    }
+    holds($iframed >= 12, 'the list holds addresses Kirby really turns into an iframe');
 
     echo "KirbyTest: $checks checks passed\n";
 } catch (Throwable $e) {

@@ -195,6 +195,15 @@ lässt es fachlich prüfen; dieser Baustein trifft dazu keine Aussage.]
 - **Gespeichert** wird nur auf dem Server: `storage/shoji/secret` (Zufallswert
   zum Signieren) und `storage/shoji/thumbs/` (Bildkopien, 30 Tage). Keine
   personenbezogenen Daten, kein Klick- oder Besuchsprotokoll.
+- **Adressen, die Shoji nicht einbetten kann.** Bei Videoblock und
+  `(video:)`: Eine Adresse auf einem Host von YouTube, Vimeo oder Digistore24,
+  die Shoji nicht zum Platzhalter machen kann (etwa ein Vimeo-Showcase oder
+  eine Kanalseite), erscheint als Hinweis mit einem gewöhnlichen Link auf diese
+  Adresse. Die Seite lädt nichts vom Anbieter und baut keine Verbindung auf,
+  bis der Besucher dem Link folgt und die Seite verlässt; dann gilt die
+  Datenschutzerklärung des Anbieters. Kirbys eigene Videoausgabe, die solche
+  Adressen beim Aufruf laden würde, wird für diese Hosts nicht verwendet,
+  solange Shoji aktiv ist. Adressen anderer Hosts bleiben unberührt.
 - **Eigene Einbettungen.** Was ein Template selbst einbettet (`<iframe>`,
   Kirbys `video()`-Helfer, rohes HTML im Textfeld), deckt das Modul nicht ab.
   Die Seite mit einem Werkzeug prüfen, das das HTML liest, oder im

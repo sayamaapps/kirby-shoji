@@ -4,13 +4,13 @@ Click-to-load for [Kirby CMS](https://getkirby.com) 5: YouTube, Vimeo, Digistore
 
 *Shoji* (障子) is the Japanese paper sliding screen: you see the outline of what is outside, and the outside only comes in when you slide it open. The plugin shows a preview image, a button and a short note; the video player or the order form loads after the click, not before.
 
-- **No third-party host in the page.** Before the click the HTML names no provider at all, not even in a `data-` attribute. The preview image, the iframe address, the markup of an HTML form, the provider's scripts and stylesheets and the plain link all point to this site (`/shoji/…`) and are served or redirected from there. A checker that reads the HTML (and a visitor's browser) sees only your own server.
+- **No third-party host in the page.** Before the click the HTML names no provider at all, not even in a `data-` attribute. The preview image, the iframe address, the markup of an HTML form, the provider's scripts and stylesheets and the plain link all point to this site (`/shoji/…`) and are served or redirected from there. A checker that reads the HTML (and a visitor's browser) sees only your own server. (The one exception is the plain link of an address Shoji cannot embed: it is a link the visitor follows, not a request; see [below](#addresses-shoji-cannot-embed).)
 - **Preview images from your own server.** The server fetches the image once, keeps it in `storage/shoji/`, and serves it. The visitor's browser never asks YouTube or Vimeo.
 - **Nothing is remembered.** No cookie, no browser storage: every page asks again. (Version 1 deliberately does not store consent on the visitor's device.)
 - **Per provider, if the site wants.** `shoji.open` loads one provider's content with the page (a sign-up form on its own sign-up page, say) while everything else stays behind the click. Off unless configured; see [Loading right away](#loading-right-away-shojiopen).
 - **Works without JavaScript.** The button is a real link; without the script it leads to the video on the provider's site.
 - **Content Security Policy friendly.** One external, deferred script from Kirby's plugin assets. No inline script, no inline event handler, no style attribute. See [Content Security Policy](#content-security-policy) for the directives.
-- **Takes over Kirby's video block and `(video:)` tag.** A YouTube or Vimeo address pasted in the Panel becomes a placeholder by itself.
+- **Takes over Kirby's video block and `(video:)` tag.** A YouTube or Vimeo address pasted in the Panel becomes a placeholder by itself. An address on a YouTube, Vimeo or Digistore24 host that Shoji cannot embed gets a note and a plain link, never Kirby's own iframe, so nothing loads before the click either way. See [Addresses Shoji cannot embed](#addresses-shoji-cannot-embed).
 - **Providers as a list.** YouTube (via `youtube-nocookie.com`), Vimeo (with `dnt=1`), Digistore24 (order form, plus its script); add your own in the configuration.
 - **HTML forms, too.** A form whose markup the site keeps itself (a Brevo sign-up form with a hidden campaign field, say) comes into the page after the click, with the provider's scripts and stylesheets. See [HTML forms](#html-forms-kind-html).
 - **Unstyled.** Classes `shoji-*` only; the look belongs to the site.
@@ -59,7 +59,26 @@ In a template:
 ]) ?>
 ```
 
-In the Panel, the video block and `(video: https://youtu.be/…)` need nothing: with Shoji on, YouTube and Vimeo addresses become placeholders; videos from the media library stay Kirby's `<video>`.
+In the Panel, the video block and `(video: https://youtu.be/…)` need nothing: with Shoji on, YouTube and Vimeo addresses become placeholders; an address on a YouTube, Vimeo or Digistore24 host that Shoji does not recognise becomes a note with a plain link ([below](#addresses-shoji-cannot-embed)); videos from the media library and from other hosts stay Kirby's `<video>`.
+
+### Addresses Shoji cannot embed
+
+Kirby's own video output turns every YouTube or Vimeo address it understands into an `<iframe>` that loads with the page. So that nothing of the kind slips past the click, the video block and the `(video:)` tag never hand an address on one of these hosts to Kirby while Shoji is on: `youtube.com`, `youtu.be`, `youtube-nocookie.com`, `vimeo.com`, `digistore24.com`, and every subdomain of them (`www.`, `m.`, `player.` …). The host decides, not the form of the address: a showcase or album link, a Vimeo id of fewer than six digits, a channel page, a file on one of these hosts. If Shoji recognises the address it prints the placeholder; if not, the same box for the tag and the block:
+
+```html
+<div class="shoji shoji-fallback shoji-vimeo">
+  <a class="shoji-button" href="https://vimeo.com/showcase/1234567/video/123456789" rel="noopener">Open on Vimeo</a>
+  <p class="shoji-note">This Vimeo address cannot be embedded here. Nothing is loaded from Vimeo unless you open the link.</p>
+</div>
+```
+
+- **No iframe, no `<video>`, no script, no image, no request** to the provider before the visitor follows the link. The link is the pasted address itself (https for a scheme-relative one) and only ever an `http(s)` address on a protected host; any other scheme prints the note without a link. The page names the provider's host in that link, like any other external link on the site.
+- The box has no `data-shoji`, so `shoji.js` leaves it alone. Link and note wear the classes of the placeholder's button and note: the CSS for the placeholder styles this box, too. `shoji-fallback` and `shoji-<youtube|vimeo|digistore>` are there for the differences.
+- Texts: `fallback` (note) and `open` (link), changeable with `shoji.texts`. A site's own `site/snippets/shoji/fallback.php` overrides the snippet (it gets `$url`).
+- Other hosts and media files stay Kirby's. A provider removed with `'shoji.providers' => ['vimeo' => false]` does not bring Kirby's iframe back: its addresses get this box.
+- The same decision, for your own code: `Shoji\Providers::isProtectedHost($url)`, and `shoji_video($kirby, $url)`, which returns the placeholder or fallback HTML for an address, or `null` for Kirby's own output.
+
+Not affected: `snippet('shoji/embed', ['url' => …])` prints nothing for an address it does not know, as before.
 
 ### Snippet data
 
@@ -396,7 +415,7 @@ Test with `Content-Security-Policy-Report-Only` first: a click on every kind of 
 
 The iframe's `allow` attribute lists every feature with `*`: the frame starts at Shoji's own address and is redirected, so the default allowlist (the frame's own origin) would not reach the provider. The redirect keeps the page as referrer; YouTube refuses to play without one.
 
-Not covered: content a template embeds itself (`<iframe>` in a template, Kirby's `video()` helper, raw HTML in a text field). Check the page with a tool that reads the HTML, or with the browser's network panel.
+Not covered: content a template embeds itself (`<iframe>` in a template, Kirby's `video()` helper, raw HTML in a text field), and addresses on other hosts, which stay Kirby's. Check the page with a tool that reads the HTML, or with the browser's network panel.
 
 ## Privacy
 

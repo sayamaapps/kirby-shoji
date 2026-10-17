@@ -11,6 +11,30 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [Unreleased]
+
+### Fixed
+
+- **An address on a YouTube, Vimeo or Digistore24 host that Shoji did not
+  recognise no longer reaches Kirby's own video output.** The video block and
+  the `(video:)` tag handed such an address to Kirby, which printed an iframe
+  (YouTube playlists, Vimeo showcase and album links, Vimeo ids of fewer than
+  six digits) or a `<video>` that loaded the provider with the page, before
+  any click. They now print a note and a plain link to the address (new
+  snippet `shoji/fallback`), the same for tag and block. The hosts:
+  `youtube.com`, `youtu.be`, `youtube-nocookie.com`, `vimeo.com`,
+  `digistore24.com` and their subdomains (`Providers::isProtectedHost()`).
+  Other hosts and media files stay Kirby's. Only with `shoji.active`.
+- **[privacy text]** README, PRIVACY.md and the operator notes in
+  DATENSCHUTZ.md: addresses Shoji cannot embed. The text blocks are
+  unchanged; the page now does what they already said.
+
+### Added
+
+- `shoji_video($kirby, $url)`: the placeholder, the fallback or `null`
+  (Kirby's own output) for an address, shared by the tag and the block.
+- Text `fallback` (en, de), usable with `shoji.texts`; the link uses `open`.
+
 ## [1.2.0] — 2026-10-13
 
 ### Added

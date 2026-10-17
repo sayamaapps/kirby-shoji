@@ -65,6 +65,64 @@ final class Providers
     public const ASSETS_MAX = 10;
     public const PARAM_VALUE_MAX = 200;
 
+    /**
+     * The providers Shoji protects, by the hosts they live on (a host and
+     * every subdomain of it). While Shoji is on, an address on one of these
+     * hosts never reaches Kirby's own video output, which would print an
+     * iframe or a <video> that loads before the click — whether or not
+     * Shoji recognises the address (see isProtectedHost()). The name is
+     * shown in the note.
+     */
+    public const PROTECTED = [
+        'youtube'   => ['name' => 'YouTube', 'hosts' => ['youtube.com', 'youtu.be', 'youtube-nocookie.com']],
+        'vimeo'     => ['name' => 'Vimeo', 'hosts' => ['vimeo.com']],
+        'digistore' => ['name' => 'Digistore24', 'hosts' => ['digistore24.com']],
+    ];
+
+    /**
+     * Key of the protected provider whose host $url names (a key of
+     * PROTECTED), or null. Only the host counts, so `notyoutube.com` and
+     * `youtube.com.example.org` are not protected, and the scheme does not:
+     * Kirby builds its iframe from any scheme, and so does this check.
+     */
+    public static function protectedProvider(string $url): ?string
+    {
+        $host = parse_url(trim($url), PHP_URL_HOST);
+        if (!is_string($host) || $host === '') {
+            return null;
+        }
+        $host = strtolower(rtrim($host, '.'));
+        foreach (self::PROTECTED as $key => $provider) {
+            foreach ($provider['hosts'] as $domain) {
+                if ($host === $domain || str_ends_with($host, '.' . $domain)) {
+                    return $key;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** True if $url names a host of a protected provider, recognised by Shoji or not. */
+    public static function isProtectedHost(string $url): bool
+    {
+        return self::protectedProvider($url) !== null;
+    }
+
+    /**
+     * The address for the plain link that stands in for an address Shoji
+     * cannot embed: the pasted address itself, https for a scheme-relative
+     * one; null unless it is an http(s) address on a protected host without
+     * whitespace or control characters (never a javascript: link).
+     */
+    public static function plainLink(string $url): ?string
+    {
+        $url = trim($url);
+        if (str_starts_with($url, '//')) {
+            $url = 'https:' . $url;
+        }
+        return preg_match('~^https?://[^\s\x00-\x1f\x7f]+$~i', $url) === 1 && self::isProtectedHost($url) ? $url : null;
+    }
+
     /** @return array<string, array> */
     public static function defaults(): array
     {

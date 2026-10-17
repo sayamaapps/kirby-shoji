@@ -93,6 +93,17 @@ address) to the content on the provider's website, like any other external
 link. For an HTML form without such a page it leads to the form's bare
 markup on the site, which submits to the provider.
 
+## Addresses Shoji cannot embed
+
+For the video block and the `(video:)` tag: an address on a YouTube, Vimeo or
+Digistore24 host that Shoji cannot turn into a placeholder (a Vimeo showcase,
+a channel page …) is shown as a note and a plain link to that address. The
+page loads nothing from the provider, makes no connection and sets no cookie
+until the visitor follows the link and leaves the site; then the provider's
+own privacy policy applies. Kirby's own video output, which would load such
+an address with the page, is not used for these hosts while Shoji is on.
+Addresses on other hosts are not touched by Shoji.
+
 ## Stored on the server
 
 - `storage/shoji/secret`: a random value that signs the site's own
