@@ -189,9 +189,11 @@ lässt es fachlich prüfen; dieser Baustein trifft dazu keine Aussage.]
   Was die Seite nicht nutzt, streichen; eigene Anbieter (`shoji.providers`)
   ergänzen.
 - **Vorschaubild-Abruf.** Der Server lädt Vorschaubilder von `img.youtube.com`
-  bzw. über Vimeos öffentliche oEmbed-Schnittstelle. Es fließen keine
-  Besucherdaten; nur Adressen, die die Seite selbst ausgegeben hat
-  (signiert), lösen einen Abruf aus.
+  bzw. über Vimeos öffentliche oEmbed-Schnittstelle (bei einem nicht
+  gelisteten Vimeo-Video mit dessen Adresse samt Hash, wie Vimeo es
+  verlangt). Eine YouTube-Playlist hat kein Vorschaubild und löst keinen
+  Abruf aus. Es fließen keine Besucherdaten; nur Adressen, die die Seite
+  selbst ausgegeben hat (signiert), lösen einen Abruf aus.
 - **Gespeichert** wird nur auf dem Server: `storage/shoji/secret` (Zufallswert
   zum Signieren) und `storage/shoji/thumbs/` (Bildkopien, 30 Tage). Keine
   personenbezogenen Daten, kein Klick- oder Besuchsprotokoll.

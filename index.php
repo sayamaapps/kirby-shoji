@@ -97,7 +97,7 @@ function shoji_route(string $kind, string $provider, string $id): Response|false
     $notFound = fn () => new Response('Not found', 'text/plain', 404, ['X-Robots-Tag' => 'noindex', 'Cache-Control' => 'no-store']);
 
     $signature = get('s');
-    $encoded = in_array($kind, ['frame', 'go', 'html'], true) ? get('p', '') : '';
+    $encoded = in_array($kind, ['frame', 'go', 'html', 'thumb'], true) ? get('p', '') : '';
     // The second and later script or stylesheet: their index is signed instead of parameters.
     $index = in_array($kind, ['script', 'style'], true) ? get('n', '0') : '0';
     if (!is_string($signature) || !is_string($encoded) || !is_string($index) || !preg_match('/^(?:0|[1-9]\d?)\z/', $index)) {

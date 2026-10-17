@@ -35,7 +35,7 @@ function idIn(array $definition, string $url): ?string
 
 try {
     $p = Providers::all();
-    expect(['youtube', 'vimeo', 'digistore'], array_keys($p), 'built-in providers');
+    expect(['youtube', 'youtube-playlist', 'vimeo', 'digistore'], array_keys($p), 'built-in providers');
     foreach ($p as $name => $definition) {
         expect(null, Providers::problem($definition), "$name: valid definition");
     }
@@ -55,6 +55,31 @@ try {
         expect('dQw4w9WgXcQ', idIn($yt, $url), "YouTube id in $url");
     }
     expect(null, idIn($yt, 'https://www.youtube.com/channel/UCBRboOIpQLe33Rwb0l9dqVw'), 'a channel is no video');
+    expect(false, Providers::validId($yt, 'videoseries'), 'videoseries is the playlist player, not a video id');
+    expect(true, Providers::validId($yt, 'videoserie2'), 'other eleven characters are fine');
+
+    // YouTube playlists: playlist?list= and embed/videoseries?list=, never as a video
+    $pl = $p['youtube-playlist'];
+    foreach ([
+        'https://www.youtube.com/playlist?list=PL1234567890abcdef',
+        'https://youtube.com/playlist?si=abc&list=PL1234567890abcdef&x=1',
+        'https://m.youtube.com/playlist?list=PL1234567890abcdef',
+        'https://www.youtube.com/embed/videoseries?list=PL1234567890abcdef',
+        'https://www.youtube-nocookie.com/embed/videoseries?si=abc&list=PL1234567890abcdef',
+    ] as $url) {
+        expect('PL1234567890abcdef', idIn($pl, $url), "playlist id in $url");
+    }
+    foreach ([
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890abcdef', // a video in a playlist is the video
+        'https://www.youtube.com/embed/videoseries', 'https://www.youtube.com/playlist', 'https://www.youtube.com/playlist?list=', 'https://www.youtube.com/playlist?list=PL12',
+        'https://www.youtube.com/playlist?xlist=PL1234567890abcdef', 'https://www.youtube.com/playlist#list=PL1234567890abcdef', 'https://youtu.be/PL1234567890abcdef',
+    ] as $url) {
+        expect(null, idIn($pl, $url), "no playlist in $url");
+    }
+    expect('videoseries', idIn($yt, 'https://www.youtube.com/embed/videoseries?list=PL1234567890abcdef'), 'the video pattern still finds videoseries, the id check refuses it');
+    expect('https://www.youtube-nocookie.com/embed/videoseries?list=PL1234567890abcdef&autoplay=1', Providers::fill($pl['embed'], 'PL1234567890abcdef', []), 'playlist player address');
+    expect('https://www.youtube.com/playlist?list=PL1234567890abcdef', Providers::fill($pl['link'], 'PL1234567890abcdef', []), 'playlist link');
+    expect(true, Providers::validId($pl, 'PL1234567890abcdef') && !Providers::validId($pl, 'videoseries') && !Providers::validId($pl, 'PL12') && !Providers::validId($pl, 'PL1234567890abc"def'), 'playlist ids');
     expect(true, Providers::validId($yt, 'dQw4w9WgXcQ'), 'valid YouTube id');
     foreach (['dQw4w9WgXc', 'dQw4w9WgXcQQ', 'dQw4w9WgX"Q', '../../etc/pw', '', "dQw4w9WgXc\n"] as $bad) {
         expect(false, Providers::validId($yt, $bad), 'invalid YouTube id ' . var_export($bad, true));
@@ -68,8 +93,43 @@ try {
     expect(null, idIn($vimeo, 'https://vimeo.com/76979871/abcdef1234'), 'unlisted Vimeo (with hash) is not taken over in v1');
     expect(false, Providers::validId($vimeo, '12ab'), 'Vimeo id is digits');
 
+    // Vimeo: the hash of an unlisted video travels as h, in the player, the link and the oEmbed address
+    $urlParams = fn (array $definition, string $url) => preg_match($definition['match'], $url, $m) ? $definition['urlParams']($url, $m) : 'no match';
+    expect(['h' => 'abcdef1234'], $urlParams($vimeo, 'https://player.vimeo.com/video/123456789?h=abcdef1234'), 'Vimeo h from the player address');
+    expect(['h' => 'abcdef1234'], $urlParams($vimeo, 'https://vimeo.com/123456789?share=copy&h=abcdef1234#t=1'), 'Vimeo h among other parameters');
+    expect([], $urlParams($vimeo, 'https://vimeo.com/76979871'), 'Vimeo without h');
+    expect([], $urlParams($vimeo, 'https://vimeo.com/76979871?h='), 'Vimeo with an empty h');
+    foreach (['https://vimeo.com/123456789?h=ab', 'https://vimeo.com/123456789?h=ab%2Fcdef12', 'https://vimeo.com/123456789?h[]=abcdef1234', 'https://vimeo.com/123456789?h=' . str_repeat('a', 33)] as $url) {
+        expect(null, $urlParams($vimeo, $url), "Vimeo h refused, address not taken over: $url");
+    }
+    expect('https://player.vimeo.com/video/123456789?autoplay=1&dnt=1&h=abcdef1234', Providers::fill($vimeo['embed'], '123456789', ['h' => 'abcdef1234']), 'Vimeo player address with h');
+    expect('https://player.vimeo.com/video/123456789?autoplay=1&dnt=1', Providers::fill($vimeo['embed'], '123456789', []), 'Vimeo player address without h, as before');
+    expect('https://vimeo.com/123456789/abcdef1234', Providers::fill($vimeo['link'], '123456789', ['h' => 'abcdef1234']), 'Vimeo link with h: the unlisted address');
+    expect('https://vimeo.com/123456789', Providers::fill($vimeo['link'], '123456789', []), 'Vimeo link without h, as before');
+    $asked = [];
+    $fetch = function (string $url) use (&$asked): array { $asked[] = $url; return [200, '{"thumbnail_url":"https://i.example/t.jpg"}']; };
+    expect(['https://i.example/t.jpg'], $vimeo['thumbnails']('123456789', $fetch, ['h' => 'abcdef1234']), 'Vimeo oEmbed answer');
+    expect(['https://vimeo.com/api/oembed.json?width=1280&url=https%3A%2F%2Fvimeo.com%2F123456789%2Fabcdef1234'], $asked, 'oEmbed with the full unlisted address');
+    $asked = [];
+    $vimeo['thumbnails']('123456789', $fetch);
+    $vimeo['thumbnails']('123456789', $fetch, ['aff' => 'x', 'h' => 'a/b']);
+    expect(['https://vimeo.com/api/oembed.json?width=1280&url=https%3A%2F%2Fvimeo.com%2F123456789', 'https://vimeo.com/api/oembed.json?width=1280&url=https%3A%2F%2Fvimeo.com%2F123456789'], $asked, 'oEmbed without h (or with an unsafe one) as before');
+
     // Digistore24
     $ds = $p['digistore'];
+    expect(['form' => '78901', 'aff' => 'partner', 'cam' => 'summer'], $urlParams($ds, 'https://www.digistore24.com/product/123456/78901?aff=partner&cam=summer'), 'Digistore form, affiliate, campaign');
+    expect(['aff' => 'partner'], $urlParams($ds, 'https://www.digistore24.com/product/123456?aff=partner&cam='), 'Digistore affiliate only, empty campaign ignored');
+    expect(['form' => '78901'], $urlParams($ds, 'https://www.digistore24.com/product/123456/78901/#top'), 'Digistore form with a trailing slash');
+    expect([], $urlParams($ds, 'https://www.digistore24.com/product/123456'), 'Digistore plain');
+    expect([], $urlParams($ds, 'https://www.digistore24.com/redir/123456'), 'Digistore redir without more');
+    expect(['aff' => 'a b&c'], $urlParams($ds, 'https://www.digistore24.com/product/123456?aff=a%20b%26c'), 'Digistore values decoded');
+    foreach ([
+        'https://www.digistore24.com/redir/123456/partner/summer', 'https://www.digistore24.com/redir/123456/78901', // path of a redir address: other things than a form
+        'https://www.digistore24.com/product/123456/abc', 'https://www.digistore24.com/product/123456/78901/2', 'https://www.digistore24.com/product/123456/12345678901',
+        'https://www.digistore24.com/product/123456?aff[]=x', 'https://www.digistore24.com/product/123456?aff=' . str_repeat('a', 201),
+    ] as $url) {
+        expect(null, $urlParams($ds, $url), "Digistore form not carried, address not taken over: $url");
+    }
     expect('256092', idIn($ds, 'https://www.digistore24.com/product/256092/79686'), 'Digistore product address');
     expect('https://www.digistore24.com/product/256092/79686?aff=partner&cam=summer', Providers::fill($ds['embed'], '256092', ['aff' => 'partner', 'cam' => 'summer', 'form' => '79686']), 'path parameter and query');
     expect('https://www.digistore24.com/product/256092', Providers::fill($ds['embed'], '256092', []), 'optional path segment left out');
@@ -116,9 +176,11 @@ try {
         'broken'  => ['name' => 'Broken', 'company' => 'X', 'id' => '/^\d+$/', 'embed' => 'http://insecure.example/{id}'],
         'Bad Name' => ['name' => 'x'],
     ]);
-    expect(['youtube', 'digistore', 'spotify'], array_keys($custom), 'removed, added, refused');
+    expect(['youtube', 'youtube-playlist', 'digistore', 'spotify'], array_keys($custom), 'removed, added, refused');
     expect('https://www.youtube-nocookie.com/embed/{id}?autoplay=1&rel=0', $custom['youtube']['embed'], 'single field replaced');
     expect('YouTube', $custom['youtube']['name'], 'other fields kept');
+
+    expect("'urlParams' must be a closure", Providers::problem(['urlParams' => 'nope'] + $vimeo), 'urlParams must be a closure');
 
     // Kind html: the site's snippet instead of an iframe address, scripts and stylesheets as lists
     $html = ['name' => 'Brevo', 'company' => 'Brevo', 'kind' => 'html', 'id' => '/^[a-z]+$/', 'snippet' => 'forms/{id}',
@@ -136,7 +198,7 @@ try {
         holds(Providers::problem(['script' => $bad] + $html) !== null, 'script list refused: ' . json_encode($bad));
         holds(Providers::problem(['style' => $bad] + $html) !== null, 'style list refused: ' . json_encode($bad));
     }
-    expect(['youtube', 'vimeo', 'digistore', 'brevo'], array_keys(Providers::all(['brevo' => $html])), 'html provider added through shoji.providers');
+    expect(['youtube', 'youtube-playlist', 'vimeo', 'digistore', 'brevo'], array_keys(Providers::all(['brevo' => $html])), 'html provider added through shoji.providers');
 
     // shoji.open: provider name => bool, only known providers, the rest dropped and logged
     $log = tempnam(sys_get_temp_dir(), 'shoji-log');

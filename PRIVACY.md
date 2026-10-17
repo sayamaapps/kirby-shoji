@@ -25,8 +25,10 @@ the browser.
 The site's server fetches the preview image from the provider once (YouTube:
 `img.youtube.com`; Vimeo: the image address named in Vimeo's public oEmbed
 answer) and keeps a copy in `storage/shoji/thumbs/` for 30 days. The request
-carries the video id and a fixed user agent, never data about a visitor.
-Images are only fetched for addresses the site itself rendered (signed).
+carries the video id and a fixed user agent, never data about a visitor; for
+an unlisted Vimeo video the address with its hash, as Vimeo needs it. A
+YouTube playlist has no preview image and causes no such request. Images are
+only fetched for addresses the site itself rendered (signed).
 
 ## After the click
 

@@ -15,7 +15,12 @@ use Closure;
  *   'company'    => 'Google',              who learns the visitor's IP address
  *   'kind'       => 'video',               'video' | 'form' | 'content' | 'html' (picks the texts)
  *   'id'         => '/^…$/',               a valid id, checked on render and in every route
- *   'match'      => '~…(id)…~i',           optional: finds the id in a pasted address
+ *   'match'      => '~…(id)…~i',           optional: finds the id (first group) in a pasted address
+ *   'urlParams'  => fn (string $url, array $match): ?array
+ *                                          optional: the parameters a pasted address carries besides
+ *                                          the id (Vimeo's h, Digistore24's form, aff, cam); null: a
+ *                                          form of the address this provider cannot carry, so it is
+ *                                          not taken over (the next provider is tried)
  *   'embed'      => 'https://…/{id}',      the iframe address (not for kind 'html')
  *   'snippet'    => 'forms/{id}',          kind 'html' only: the site's Kirby snippet with the markup
  *   'link'       => 'https://…/{id}',      optional: the plain link (without JavaScript), default: embed
@@ -23,7 +28,7 @@ use Closure;
  *                                          markup is in the page); one address or a list, in order
  *   'style'      => 'https://….css',       optional, kind 'html': stylesheets, one address or a list
  *   'thumbnails' => ['https://…/{id}.jpg'] optional: preview image candidates, or a
- *                                          closure fn (string $id, Closure $fetch): array
+ *                                          closure fn (string $id, Closure $fetch, array $params): array
  *   'size'       => [1280, 720],           optional: width/height of the preview image
  *   'allow'      => 'autoplay; fullscreen' optional: features the iframe may use
  *
@@ -31,6 +36,9 @@ use Closure;
  * parameter `name`, empty if missing) and {/name} (a slash plus the value, or
  * nothing). Parameters no placeholder uses are appended as the query string.
  * Templates must produce an https address; anything else is refused.
+ *
+ * A pasted address gives the id and, through `urlParams`, parameters; those
+ * given explicitly next to it win (Embed::fromUrl()).
  *
  * `shoji.providers` adds providers, changes single fields of a built-in one,
  * or removes one with `false`:
@@ -123,6 +131,16 @@ final class Providers
         return preg_match('~^https?://[^\s\x00-\x1f\x7f]+$~i', $url) === 1 && self::isProtectedHost($url) ? $url : null;
     }
 
+    /**
+     * The query string of an address as an array (names and values decoded,
+     * the last of a repeated name wins, `name[]=…` an array); empty without one.
+     */
+    private static function query(string $url): array
+    {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        return $query;
+    }
+
     /** @return array<string, array> */
     public static function defaults(): array
     {
@@ -131,7 +149,8 @@ final class Providers
                 'name'       => 'YouTube',
                 'company'    => 'Google',
                 'kind'       => 'video',
-                'id'         => '/^[A-Za-z0-9_-]{11}$/',
+                // Not "videoseries": that is the playlist player (embed/videoseries?list=…), no video.
+                'id'         => '/^(?!videoseries$)[A-Za-z0-9_-]{11}$/',
                 'match'      => '~(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:[^#]*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})~i',
                 'embed'      => 'https://www.youtube-nocookie.com/embed/{id}?autoplay=1',
                 'link'       => 'https://www.youtube.com/watch?v={id}',
@@ -142,17 +161,39 @@ final class Providers
                 'size'       => [1280, 720],
                 'allow'      => 'autoplay; encrypted-media; fullscreen; picture-in-picture',
             ],
+            // A playlist (youtube.com/playlist?list=…, embed/videoseries?list=…): the player
+            // of the list, no preview image (YouTube has no fixed address for one).
+            'youtube-playlist' => [
+                'name'    => 'YouTube',
+                'company' => 'Google',
+                'kind'    => 'video',
+                'id'      => '/^[A-Za-z0-9_-]{13,64}$/',
+                'match'   => '~youtube(?:-nocookie)?\.com/(?:playlist|embed/videoseries)\?(?:[^#]*&)?list=([A-Za-z0-9_-]{13,64})(?![A-Za-z0-9_-])~i',
+                'embed'   => 'https://www.youtube-nocookie.com/embed/videoseries?list={id}&autoplay=1',
+                'link'    => 'https://www.youtube.com/playlist?list={id}',
+                'allow'   => 'autoplay; encrypted-media; fullscreen; picture-in-picture',
+            ],
             'vimeo' => [
                 'name'       => 'Vimeo',
                 'company'    => 'Vimeo',
                 'kind'       => 'video',
                 'id'         => '/^\d{6,12}$/',
                 'match'      => '~vimeo\.com/(?:video/|channels/[\w-]+/|groups/[\w-]+/videos/)?(\d{6,12})(?![\w/])~i',
+                // h: the hash of an unlisted video, ?h= on the player and /{id}/{h} on vimeo.com
+                'urlParams'  => static function (string $url): ?array {
+                    $h = self::query($url)['h'] ?? null;
+                    if ($h === null || $h === '') {
+                        return [];
+                    }
+                    return is_string($h) && preg_match('/^[A-Za-z0-9]{6,32}$/', $h) === 1 ? ['h' => $h] : null;
+                },
                 'embed'      => 'https://player.vimeo.com/video/{id}?autoplay=1&dnt=1',
-                'link'       => 'https://vimeo.com/{id}',
-                // Vimeo has no fixed image address; its oEmbed answer names one.
-                'thumbnails' => static function (string $id, Closure $fetch): array {
-                    [$status, $body] = $fetch('https://vimeo.com/api/oembed.json?width=1280&url=' . rawurlencode('https://vimeo.com/' . $id));
+                'link'       => 'https://vimeo.com/{id}{/h}',
+                // Vimeo has no fixed image address; its oEmbed answer names one. An unlisted
+                // video needs its full address (with the hash) there, too.
+                'thumbnails' => static function (string $id, Closure $fetch, array $params = []): array {
+                    $page = 'https://vimeo.com/' . $id . (isset($params['h']) && preg_match(self::SAFE_ID, $params['h']) ? '/' . $params['h'] : '');
+                    [$status, $body] = $fetch('https://vimeo.com/api/oembed.json?width=1280&url=' . rawurlencode($page));
                     $data = $status === 200 ? json_decode($body, true) : null;
                     $url = is_array($data) ? ($data['thumbnail_url'] ?? null) : null;
                     return is_string($url) && str_starts_with($url, 'https://') ? [$url] : [];
@@ -166,6 +207,32 @@ final class Providers
                 'kind'    => 'form',
                 'id'      => '/^\d{1,10}$/',
                 'match'   => '~digistore24\.com/(?:product|redir)/(\d{1,10})(?!\d)~i',
+                // product/{id}/{form}: the order form; ?aff= and ?cam=: affiliate and campaign.
+                // redir/{id}/… carries other things in its path (affiliate, campaign): not taken over.
+                'urlParams' => static function (string $url): ?array {
+                    if (preg_match('~digistore24\.com/(product|redir)/\d{1,10}((?:/[^/?#]*)*)~i', $url, $m) !== 1) {
+                        return null;
+                    }
+                    $segments = array_values(array_filter(explode('/', $m[2]), fn (string $s) => $s !== ''));
+                    $params = [];
+                    if (strtolower($m[1]) === 'product' && count($segments) === 1 && preg_match('/^\d{1,10}$/', $segments[0])) {
+                        $params['form'] = $segments[0];
+                    } elseif ($segments !== []) {
+                        return null;
+                    }
+                    $query = self::query($url);
+                    foreach (['aff', 'cam'] as $name) {
+                        $value = $query[$name] ?? '';
+                        if ($value === '') {
+                            continue;
+                        }
+                        if (!is_string($value) || strlen($value) > self::PARAM_VALUE_MAX) {
+                            return null;
+                        }
+                        $params[$name] = $value;
+                    }
+                    return $params;
+                },
                 // {/form}: the order form id, as in …/product/123456/78901
                 'embed'   => 'https://www.digistore24.com/product/{id}{/form}',
                 'script'  => 'https://www.digistore24-scripts.com/service/digistore.js',
@@ -253,6 +320,9 @@ final class Providers
         }
         if (isset($definition['match']) && (!is_string($definition['match']) || @preg_match($definition['match'], '') === false)) {
             return "'match' is no valid regular expression";
+        }
+        if (isset($definition['urlParams']) && !$definition['urlParams'] instanceof Closure) {
+            return "'urlParams' must be a closure";
         }
         if ($html && !preg_match(self::SNIPPET, str_replace('{id}', 'id', $definition['snippet']))) {
             return "'snippet' must be a snippet name like 'forms/{id}'";
