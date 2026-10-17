@@ -135,11 +135,11 @@ function shoji_route(string $kind, string $provider, string $id): Response|false
                 '<svg xmlns="http://www.w3.org/2000/svg" width="' . $width . '" height="' . $height . '" viewBox="0 0 ' . $width . ' ' . $height . '"/>',
                 'image/svg+xml',
                 200,
-                ['Cache-Control' => 'public, max-age=3600', 'X-Content-Type-Options' => 'nosniff']
+                ['Cache-Control' => Options::thumbCacheControl(3600), 'X-Content-Type-Options' => 'nosniff']
             );
         }
         return new Response((string) file_get_contents($image['file']), $image['type'], 200, [
-            'Cache-Control'          => 'public, max-age=' . Thumbs::MAX_AGE,
+            'Cache-Control'          => Options::thumbCacheControl(Thumbs::MAX_AGE),
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

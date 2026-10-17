@@ -33,6 +33,21 @@ final class Options
     }
 
     /**
+     * Cache-Control of a preview image answer (real image and blank SVG):
+     * `private, no-store` while the request is behind Sudare's preview
+     * protection (Sudare's contract for other packages: `class_exists(\Sudare\Sudare::class)
+     * && \Sudare\Sudare::active()`, no Composer dependency), so a shared cache in
+     * front of a protected preview stores nothing; otherwise `public, max-age=N`.
+     */
+    public static function thumbCacheControl(int $maxAge): string
+    {
+        if (class_exists(\Sudare\Sudare::class) && \Sudare\Sudare::active()) {
+            return 'private, no-store';
+        }
+        return 'public, max-age=' . $maxAge;
+    }
+
+    /**
      * `shoji.open`, checked (Providers::open): provider name => true for
      * content that loads with the page, false or missing for content behind
      * the click. Read once per Kirby instance, so a typo is logged once.

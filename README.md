@@ -429,7 +429,7 @@ Test with `Content-Security-Policy-Report-Only` first: a click on every kind of 
 | `/shoji/html/<provider>/<id>?p=…&s=…` | Kind `html`: the site's snippet, rendered now, `text/html`, `no-store`, `noindex`. A missing or empty snippet is a 404. |
 | `/shoji/go/<provider>/<id>?p=…&s=…` | 302 to the provider's page (the plain link). |
 
-`s` is an HMAC over kind, provider, id and parameters (or the script's index) with the site's secret (no parameters, no `p`: such an address is the same as in 1.2): only addresses the site rendered work, and the image route cannot be used to make the server fetch arbitrary images. Redirects are `no-store` and `noindex`. Images are checked by their first bytes (JPEG, PNG, WebP), at most 5 MB, and fetched without any visitor data.
+`s` is an HMAC over kind, provider, id and parameters (or the script's index) with the site's secret (no parameters, no `p`: such an address is the same as in 1.2): only addresses the site rendered work, and the image route cannot be used to make the server fetch arbitrary images. Redirects are `no-store` and `noindex`. Preview images are `public` (the blank SVG for an hour), but behind Sudare (preview protection) they are sent `private, no-store`, so a shared cache in front of a protected preview stores nothing. Images are checked by their first bytes (JPEG, PNG, WebP), at most 5 MB, and fetched without any visitor data.
 
 The iframe's `allow` attribute lists every feature with `*`: the frame starts at Shoji's own address and is redirected, so the default allowlist (the frame's own origin) would not reach the provider. The redirect keeps the page as referrer; YouTube refuses to play without one.
 

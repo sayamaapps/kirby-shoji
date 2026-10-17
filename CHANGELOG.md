@@ -11,7 +11,7 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
-## [Unreleased]
+## [1.3.0] — 2026-10-17
 
 ### Fixed
 
@@ -54,6 +54,16 @@ All notable changes to this project are documented here. Versions follow
   nothing twice. The markup fetch of kind `html` has the same limit; markup
   that has not arrived by then takes the way out of a failed fetch, the
   button's plain link.
+
+- **Behind Sudare (preview protection) preview images are no longer cacheable
+  by a shared cache.** `/shoji/thumb/…` answered with `public, max-age=…`
+  (the blank SVG with `public, max-age=3600`, the image with 30 days), which
+  let a shared HTTP cache in front of a protected preview store an image
+  fetched with the preview credentials and serve it to anonymous requests.
+  While `\Sudare\Sudare::active()` is true both answers now send
+  `private, no-store`; nothing else about them changes. Without Sudare the
+  headers stay as they were. No new dependency, no change to a provider
+  address.
 
 ### Added
 
