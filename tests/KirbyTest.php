@@ -16,7 +16,8 @@
  * and the video block print a note and a plain link, never Kirby's iframe;
  * and that a pasted address arrives complete: the whole iframe and link
  * target of tag and block (Vimeo's h, Digistore24's form, aff and cam, a
- * YouTube playlist), signed.
+ * YouTube playlist), signed; and the preview image's Cache-Control (public,
+ * but private and no-store behind Sudare, with a stub for its active()).
  *   php tests/KirbyTest.php
  */
 $base = dirname(__DIR__);
@@ -29,6 +30,9 @@ use Kirby\Cms\Html;
 use Kirby\Http\Response;
 use Kirby\Template\Snippet;
 use Shoji\Http;
+
+// Sudare's contract (active()) as a stub; the real package is not a dependency.
+if (!class_exists(\Sudare\Sudare::class, false)) { require __DIR__ . '/stubs/Sudare.php'; }
 
 $checks = 0;
 function expect($expected, $actual, string $what): void
@@ -212,11 +216,28 @@ PHP);
     expect(200, $r->code(), 'preview image served');
     expect('image/jpeg', $r->type(), 'as JPEG');
     expect($jpeg, $r->body(), 'the fetched bytes');
+    expect('public, max-age=2592000', $r->header('Cache-Control'), 'preview image: public for 30 days without Sudare');
+    expect('nosniff', $r->header('X-Content-Type-Options'), 'preview image: nosniff without Sudare');
     expect(['https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg'], $asked, 'maxres missing, hq taken');
     holds(is_file($tmp . '/storage/shoji/thumbs/youtube/dQw4w9WgXcQ.jpg'), 'cached in storage/shoji/thumbs');
     $asked = [];
     $call($thumb, $on);
     expect([], $asked, 'second request from the cache');
+
+    // Behind Sudare (preview protection) a shared cache in front must store neither answer: private, no-store.
+    \Sudare\Sudare::$active = true;
+    try {
+        $r = $call($thumb, $on);
+        expect(200, $r->code(), 'Sudare: preview image still served');
+        expect('image/jpeg', $r->type(), 'Sudare: preview image content type unchanged');
+        expect($jpeg, $r->body(), 'Sudare: preview image bytes unchanged');
+        expect('private, no-store', $r->header('Cache-Control'), 'Sudare: preview image private, no-store');
+        expect('nosniff', $r->header('X-Content-Type-Options'), 'Sudare: preview image nosniff unchanged');
+        expect('no-store', $call($frameOf('/frame/youtube/dQw4w9WgXcQ'), $on)->header('Cache-Control'), 'Sudare: redirect still no-store');
+    } finally {
+        \Sudare\Sudare::$active = false;
+    }
+    expect('public, max-age=2592000', $call($thumb, $on)->header('Cache-Control'), 'Sudare off again: preview image public again');
 
     // Nothing usable: a blank image, remembered for a day.
     $vimeoThumb = current(array_filter($attrs($html, 'src'), fn ($u) => str_contains($u, '/thumb/vimeo/')));
@@ -226,10 +247,24 @@ PHP);
     };
     $r = $call($vimeoThumb, $on);
     expect('image/svg+xml', $r->type(), 'blank image instead of a broken one');
+    expect('public, max-age=3600', $r->header('Cache-Control'), 'blank image: public for an hour without Sudare');
+    expect('nosniff', $r->header('X-Content-Type-Options'), 'blank image: nosniff without Sudare');
+    $blank = $r->body();
     holds(is_file($tmp . '/storage/shoji/thumbs/vimeo/76979871.miss'), 'miss remembered');
     $asked = [];
     $call($vimeoThumb, $on);
     expect([], $asked, 'no new fetch within a day after a miss');
+    \Sudare\Sudare::$active = true;
+    try {
+        $r = $call($vimeoThumb, $on);
+        expect(200, $r->code(), 'Sudare: blank image still served');
+        expect('image/svg+xml', $r->type(), 'Sudare: blank image content type unchanged');
+        expect($blank, $r->body(), 'Sudare: blank image body unchanged');
+        expect('private, no-store', $r->header('Cache-Control'), 'Sudare: blank image private, no-store');
+        expect('nosniff', $r->header('X-Content-Type-Options'), 'Sudare: blank image nosniff unchanged');
+    } finally {
+        \Sudare\Sudare::$active = false;
+    }
     Http::$fake = null;
 
     // 5. Open mode: content right away, still only own addresses.
