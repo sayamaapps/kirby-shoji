@@ -25,8 +25,10 @@ the browser.
 The site's server fetches the preview image from the provider once (YouTube:
 `img.youtube.com`; Vimeo: the image address named in Vimeo's public oEmbed
 answer) and keeps a copy in `storage/shoji/thumbs/` for 30 days. The request
-carries the video id and a fixed user agent, never data about a visitor.
-Images are only fetched for addresses the site itself rendered (signed).
+carries the video id and a fixed user agent, never data about a visitor; for
+an unlisted Vimeo video the address with its hash, as Vimeo needs it. A
+YouTube playlist has no preview image and causes no such request. Images are
+only fetched for addresses the site itself rendered (signed).
 
 ## After the click
 
@@ -92,6 +94,17 @@ The button is a plain link. It leads (through the site's `/shoji/go/…`
 address) to the content on the provider's website, like any other external
 link. For an HTML form without such a page it leads to the form's bare
 markup on the site, which submits to the provider.
+
+## Addresses Shoji cannot embed
+
+For the video block and the `(video:)` tag: an address on a YouTube, Vimeo or
+Digistore24 host that Shoji cannot turn into a placeholder (a Vimeo showcase,
+a channel page …) is shown as a note and a plain link to that address. The
+page loads nothing from the provider, makes no connection and sets no cookie
+until the visitor follows the link and leaves the site; then the provider's
+own privacy policy applies. Kirby's own video output, which would load such
+an address with the page, is not used for these hosts while Shoji is on.
+Addresses on other hosts are not touched by Shoji.
 
 ## Stored on the server
 

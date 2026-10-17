@@ -16,4 +16,5 @@ return [
     'thumbAltUntitled'  => 'Preview image of the {name} video',
     'frame'             => 'Content from {name}',
     'open'              => 'Open on {name}',
+    'fallback'          => 'This {name} address cannot be embedded here. Nothing is loaded from {name} unless you open the link.',
 ];

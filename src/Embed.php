@@ -44,12 +44,29 @@ final class Embed
         return new self($kirby, $provider, $definition, $id, Providers::params($params), $title);
     }
 
-    /** From a pasted address (YouTube, Vimeo, Digistore24 …); null if no provider recognises it. */
+    /**
+     * From a pasted address (YouTube, Vimeo, Digistore24 …); null if no
+     * provider recognises it. The address gives the id and what the provider
+     * says it carries (`urlParams`: a Vimeo hash, a Digistore24 order form,
+     * affiliate and campaign); $params given explicitly win over that. An
+     * address in a form the provider cannot carry is not taken over.
+     */
     public static function fromUrl(App $kirby, string $url, array $params = [], ?string $title = null): ?self
     {
         foreach (self::providers($kirby) as $name => $definition) {
-            if (isset($definition['match']) && preg_match($definition['match'], $url, $m) && isset($m[1])) {
-                return self::make($kirby, $name, $m[1], $params, $title);
+            if (!isset($definition['match']) || !preg_match($definition['match'], $url, $m) || !isset($m[1])) {
+                continue;
+            }
+            $carried = [];
+            if (($definition['urlParams'] ?? null) instanceof Closure) {
+                $carried = $definition['urlParams']($url, $m);
+                if (!is_array($carried)) {
+                    continue;
+                }
+            }
+            $embed = self::make($kirby, $name, $m[1], Providers::params($params) + Providers::params($carried), $title);
+            if ($embed !== null) {
+                return $embed;
             }
         }
         return null;
@@ -151,7 +168,7 @@ final class Embed
 
     public function thumbUrl(): ?string
     {
-        return $this->hasThumbnail() ? $this->ownUrl('thumb', false) : null;
+        return $this->hasThumbnail() ? $this->ownUrl('thumb', true) : null;
     }
 
     public function frameUrl(): string
@@ -252,7 +269,7 @@ final class Embed
     {
         $thumbnails = $this->definition['thumbnails'] ?? [];
         if ($thumbnails instanceof Closure) {
-            $thumbnails = $thumbnails($this->id, $fetch);
+            $thumbnails = $thumbnails($this->id, $fetch, $this->params);
         }
         $urls = [];
         foreach (is_array($thumbnails) ? $thumbnails : [] as $template) {

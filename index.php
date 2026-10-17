@@ -16,6 +16,7 @@ require_once __DIR__ . '/src/Thumbs.php';
 use Shoji\Embed;
 use Shoji\I18n;
 use Shoji\Options;
+use Shoji\Providers;
 use Shoji\Thumbs;
 
 /**
@@ -96,7 +97,7 @@ function shoji_route(string $kind, string $provider, string $id): Response|false
     $notFound = fn () => new Response('Not found', 'text/plain', 404, ['X-Robots-Tag' => 'noindex', 'Cache-Control' => 'no-store']);
 
     $signature = get('s');
-    $encoded = in_array($kind, ['frame', 'go', 'html'], true) ? get('p', '') : '';
+    $encoded = in_array($kind, ['frame', 'go', 'html', 'thumb'], true) ? get('p', '') : '';
     // The second and later script or stylesheet: their index is signed instead of parameters.
     $index = in_array($kind, ['script', 'style'], true) ? get('n', '0') : '0';
     if (!is_string($signature) || !is_string($encoded) || !is_string($index) || !preg_match('/^(?:0|[1-9]\d?)\z/', $index)) {
@@ -156,6 +157,27 @@ function shoji_route(string $kind, string $provider, string $id): Response|false
     ]);
 }
 
+/**
+ * What the (video:) tag and the video block print for an address while
+ * Shoji is on: the placeholder; for an address on a protected provider's
+ * host that Shoji cannot embed (Providers::isProtectedHost) the fallback
+ * (shoji/fallback: a note and a plain link) — never Kirby's own output, which
+ * would load the provider with the page; null for everything else (media
+ * files, other hosts), which stays Kirby's. One decision for tag and block.
+ */
+function shoji_video(App $kirby, string $url): ?string
+{
+    if (!Options::active($kirby)) {
+        return null;
+    }
+    if ($embed = Embed::fromUrl($kirby, $url)) {
+        return (string) $kirby->snippet('shoji/embed', ['embed' => $embed], true);
+    }
+    return Providers::isProtectedHost($url)
+        ? (string) $kirby->snippet('shoji/fallback', ['url' => trim($url)], true)
+        : null;
+}
+
 /** Kirby's own (video:) tag and video block, for everything Shoji does not take over. */
 function shoji_core_tag(string $name): ?array
 {
@@ -182,8 +204,9 @@ App::plugin('sayamaapps/shoji', [
      * Kirby looks there first.
      */
     'snippets' => [
-        'shoji/embed'  => __DIR__ . '/snippets/shoji/embed.php',
-        'blocks/video' => __DIR__ . '/snippets/blocks/video.php',
+        'shoji/embed'    => __DIR__ . '/snippets/shoji/embed.php',
+        'shoji/fallback' => __DIR__ . '/snippets/shoji/fallback.php',
+        'blocks/video'   => __DIR__ . '/snippets/blocks/video.php',
     ],
 
     /**
@@ -206,8 +229,9 @@ App::plugin('sayamaapps/shoji', [
     ],
 
     /**
-     * (video: …) — a YouTube or Vimeo address becomes a placeholder; a file
-     * from the page, anything else, or Shoji switched off: Kirby's own tag.
+     * (video: …) — a YouTube or Vimeo address becomes a placeholder, one
+     * Shoji cannot embed a note with a plain link (shoji_video()); a file
+     * from the page, another host, or Shoji switched off: Kirby's own tag.
      * The attribute list is Kirby's, so existing tags keep parsing.
      */
     'tags' => [
@@ -217,13 +241,12 @@ App::plugin('sayamaapps/shoji', [
                 'loop', 'muted', 'playsinline', 'poster', 'preload', 'style', 'width',
             ],
             'html' => function (KirbyTag $tag): string {
-                $kirby = $tag->kirby();
-                $embed = Options::active($kirby) ? Embed::fromUrl($kirby, (string) $tag->value) : null;
-                if ($embed === null) {
+                $content = shoji_video($tag->kirby(), (string) $tag->value);
+                if ($content === null) {
                     return shoji_core_tag('video')['html']($tag);
                 }
                 return Html::figure(
-                    [$kirby->snippet('shoji/embed', ['embed' => $embed], true)],
+                    [$content],
                     $tag->caption,
                     ['class' => $tag->class ?? 'video', 'style' => $tag->style]
                 );

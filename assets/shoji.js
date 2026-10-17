@@ -18,15 +18,23 @@
  *   shoji:inserted  kind 'html': the markup is in the page, the placeholder content
  *                   is gone, the provider scripts are not loaded yet. The place to
  *                   fill hidden form fields.
- *   shoji:script    the provider scripts have loaded (or failed); for an iframe, the
- *                   iframe comes next
+ *   shoji:script    the provider scripts have loaded (or failed, or 5 seconds passed); for
+ *                   an iframe, the iframe comes next
  *   shoji:loaded    the iframe fired load (or 5 seconds passed), or the markup and
- *                   its scripts are there; the container has the class shoji-opened
+ *                   its scripts are there (or 5 seconds passed); the container has the
+ *                   class shoji-opened
  * While loading, the container has the class shoji-loading and still holds
  * the placeholder content.
+ *
+ * No step holds the content back for more than 5 seconds: the provider's
+ * scripts, the stylesheets, the markup and the iframe each get that long.
+ * Scripts that arrive later still load, in their order, and run; they never
+ * open anything twice.
  */
 (function () {
   'use strict';
+
+  var WAIT = 5000; // ms one step (scripts, stylesheets, markup, iframe) may hold the content back
 
   var loading = {}; // script or stylesheet address -> callbacks while loading, true when done
 
@@ -115,18 +123,35 @@
     document.head.appendChild(element);
   }
 
-  /** The scripts one after the other, in their order (a later one may need an earlier one). */
+  /**
+   * The scripts one after the other, in their order (a later one may need an
+   * earlier one). A script that neither loads nor fails holds the content
+   * back for WAIT at most: then done() runs without it. The chain goes on in
+   * the background, so a late script still loads and runs in its place, but
+   * done() and the event come once only.
+   */
   function loadScripts(box, list, done) {
     var i = 0;
+    var finished = false;
+    function finish() {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      if (list.length) {
+        emit(box, 'shoji:script');
+      }
+      done();
+    }
+    if (list.length) {
+      window.setTimeout(finish, WAIT);
+    }
     (function next() {
       if (i < list.length) {
         load('script', list[i++], next);
         return;
       }
-      if (list.length) {
-        emit(box, 'shoji:script');
-      }
-      done();
+      finish();
     })();
   }
 
@@ -171,7 +196,7 @@
     // The timeout covers browsers and extensions that swallow the
     // cross-origin load event although the frame did navigate.
     frame.addEventListener('load', finish);
-    window.setTimeout(finish, 5000);
+    window.setTimeout(finish, WAIT);
     frame.src = src;
     box.appendChild(frame);
   }
@@ -180,8 +205,8 @@
    * Kind 'html': the markup from the site and the provider's stylesheets
    * at the same time; in the page once both are there (a stylesheet that
    * hangs is given 5 seconds); then the provider's scripts, which look for
-   * their form when they run. Markup that cannot be fetched: the button's
-   * plain link, as without JavaScript.
+   * their form when they run. Markup that cannot be fetched, or does not
+   * arrive within 5 seconds: the button's plain link, as without JavaScript.
    */
   function openHtml(box, src, scripts, styles) {
     var html = null;
@@ -213,6 +238,21 @@
         insert();
       }
     }
+    // The markup is not coming (error, or nothing within WAIT): the plain
+    // link, as without JavaScript. Once the markup is in, or the link was
+    // taken, a late answer or a late timer changes nothing.
+    function fail() {
+      if (done) {
+        return;
+      }
+      done = true;
+      box.removeAttribute('data-shoji-state');
+      box.classList.remove('shoji-loading');
+      var button = box.querySelector('a.shoji-button');
+      if (button && button.href) {
+        window.location.href = button.href;
+      }
+    }
 
     if (pending === 0) {
       styled = true;
@@ -220,7 +260,7 @@
       window.setTimeout(function () {
         styled = true;
         insert();
-      }, 5000);
+      }, WAIT);
       for (var i = 0; i < styles.length; i++) {
         load('link', styles[i], styleDone);
       }
@@ -235,15 +275,12 @@
       .then(function (text) {
         html = text;
         insert();
-      }, function () {
-        done = true;
-        box.removeAttribute('data-shoji-state');
-        box.classList.remove('shoji-loading');
-        var button = box.querySelector('a.shoji-button');
-        if (button && button.href) {
-          window.location.href = button.href;
-        }
-      });
+      }, fail);
+    window.setTimeout(function () {
+      if (html === null) {
+        fail();
+      }
+    }, WAIT);
   }
 
   function open(box) {

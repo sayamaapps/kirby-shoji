@@ -16,4 +16,5 @@ return [
     'thumbAltUntitled'  => 'Vorschaubild des {name}-Videos',
     'frame'             => 'Inhalt von {name}',
     'open'              => 'Auf {name} öffnen',
+    'fallback'          => 'Diese {name}-Adresse lässt sich hier nicht einbetten. Von {name} wird nichts geladen, solange Sie den Link nicht öffnen.',
 ];
