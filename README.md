@@ -127,6 +127,8 @@ An invalid id or an unknown address prints nothing.
 
 The container carries the kind (`shoji-video`, `shoji-form`, `shoji-content`, `shoji-html`) and the provider (`shoji-youtube` …). The script tag comes once per page, with the first placeholder. After the click the container gets `shoji-loading`, then an `<iframe class="shoji-frame">`; once the frame has loaded (or after 5 seconds) the placeholder content is removed and the container has `shoji-opened`. Kind `html` gets a `<div class="shoji-markup">` with the site's markup instead of the iframe.
 
+No step holds the content back for more than 5 seconds. The provider's scripts, the stylesheets, the markup and the iframe each get that long; a script that neither loads nor fails (a connection that just hangs) is given up on after 5 seconds and the iframe opens without it, `shoji:script` and `shoji:loaded` fire once, and the container leaves `shoji-loading`. Scripts that arrive later still load, in their order, and run; they open nothing twice. Kind `html` markup that has not arrived after 5 seconds takes the same way out as markup that cannot be fetched: the button's plain link.
+
 A starting point for the CSS. Button and note stay in the flow: when the note needs more room than 16:9 leaves (narrow screen, large text), the box grows instead of laying the note over the button or above the box. Don't add `overflow: hidden` to `.shoji`, the box would no longer grow.
 
 ```css
@@ -148,8 +150,8 @@ The script dispatches events on the container (they bubble), `detail.provider` n
 |---|---|
 | `shoji:open` | clicked, nothing loaded yet |
 | `shoji:inserted` | kind `html`: the markup is in the page, the placeholder content is gone, the provider scripts are not loaded yet — the place to fill hidden fields |
-| `shoji:script` | the provider scripts have loaded (or failed); for an iframe, the iframe comes next |
-| `shoji:loaded` | the iframe is there and the placeholder content is gone; kind `html`: the markup and its scripts are there |
+| `shoji:script` | the provider scripts have loaded (or failed, or 5 seconds passed); for an iframe, the iframe comes next |
+| `shoji:loaded` | the iframe is there and the placeholder content is gone; kind `html`: the markup and its scripts are there (or 5 seconds passed) |
 
 ```js
 document.addEventListener('shoji:open', (event) => {
@@ -243,9 +245,9 @@ Address templates know `{id}`, `{name}` (a parameter) and `{/name}` (a slash plu
 Some forms only work as markup in the page, not as an iframe. Brevo's sign-up form is one: its hosted iframe ignores the page's address, so a hidden field that carries a campaign key (`?cam=…`) never reaches Brevo. Kind `html` keeps such a form behind the same placeholder as an order form:
 
 1. Before the click the page holds the placeholder (button, note naming provider and company, privacy link) and only own addresses. The form's markup is not in the page at all.
-2. On the click `shoji.js` fetches the markup from `/shoji/html/<provider>/<id>?p=…&s=…` on your site, which renders **your Kirby snippet** in that request. Meanwhile it loads the provider's stylesheets (through `/shoji/style/…`, at most 5 seconds of waiting).
+2. On the click `shoji.js` fetches the markup from `/shoji/html/<provider>/<id>?p=…&s=…` on your site, which renders **your Kirby snippet** in that request. Meanwhile it loads the provider's stylesheets (through `/shoji/style/…`, at most 5 seconds of waiting). Markup that has not arrived after 5 seconds is treated like markup that cannot be fetched: the button's plain link.
 3. The markup goes into the box, the placeholder content goes, the focus moves to the form, and `shoji:inserted` fires: the moment for page scripts to fill hidden fields.
-4. Only then the provider's scripts load (through `/shoji/script/…`, one after the other), because they look for their form when they run. `shoji:loaded` follows.
+4. Only then the provider's scripts load (through `/shoji/script/…`, one after the other), because they look for their form when they run. `shoji:loaded` follows, after the last script or after 5 seconds.
 
 Why a signed address and not a `<template>` in the page: the markup names the provider (the form's `action`), so a `<template>` would put the provider's host into the HTML before the click, and the page could no longer be checked by reading it. The signed address also means the markup is rendered from your snippet only (the name is fixed in the provider definition, parameters are signed), never from anything a visitor sends.
 

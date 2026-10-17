@@ -224,3 +224,121 @@ test('html: the focus moves from the removed button to the inserted markup', asy
   assert.equal(holder.attrs.tabindex, '-1', 'focusable by script, not in the tab order');
   assert.equal(holder.focused, true);
 });
+
+// A step that never answers holds the content back for 5 seconds at most.
+const digistore = {
+  'data-shoji-frame': 'https://site.example/shoji/frame/digistore/123456?s=abc',
+  'data-shoji-script': 'https://site.example/shoji/script/digistore/123456?s=d https://site.example/shoji/script/digistore/123456?n=1&s=e',
+};
+/** Fires every timer registered so far (once), like 5 seconds passing. */
+const elapse = (timers) => timers.splice(0).forEach((fn) => fn());
+const tags = (appended) => appended.map((e) => e.tagName);
+
+test('iframe: a script that never answers holds the frame back 5 seconds, then the frame opens', () => {
+  const { click, appended, events, timers, box } = setup(digistore);
+  assert.equal(click(), true);
+  assert.deepEqual(tags(appended), ['SCRIPT'], 'waiting for the first script');
+  assert.equal(box.attrs['data-shoji-state'], 'loading');
+  assert.equal(box.classes.has('shoji-loading'), true);
+  elapse(timers); // 5 seconds, the script is still pending
+  assert.deepEqual(tags(appended), ['SCRIPT', 'IFRAME'], 'the frame opens without the script');
+  assert.equal(appended[1].src, 'https://site.example/shoji/frame/digistore/123456?s=abc');
+  assert.deepEqual(events, ['shoji:open', 'shoji:script'], 'the script step ends, announced once');
+  elapse(timers); // the frame never fires load either: after 5 more seconds the placeholder goes
+  assert.equal(box.attrs['data-shoji-state'], 'opened', 'the state is resolved, not stuck on loading');
+  assert.equal(box.classes.has('shoji-loading'), false);
+  assert.equal(box.classes.has('shoji-opened'), true);
+  assert.deepEqual(events, ['shoji:open', 'shoji:script', 'shoji:loaded']);
+});
+
+test('iframe: a script that arrives after the timeout opens nothing twice, the next script still follows', () => {
+  const { click, appended, events, timers } = setup(digistore);
+  click();
+  elapse(timers);
+  assert.deepEqual(tags(appended), ['SCRIPT', 'IFRAME']);
+  appended[0].onload(); // late
+  assert.deepEqual(tags(appended), ['SCRIPT', 'IFRAME', 'SCRIPT'], 'no second frame; the second script loads in its order');
+  assert.equal(appended[2].src, 'https://site.example/shoji/script/digistore/123456?n=1&s=e');
+  appended[2].onload();
+  elapse(timers);
+  assert.deepEqual(tags(appended), ['SCRIPT', 'IFRAME', 'SCRIPT'], 'still one frame');
+  assert.deepEqual(events, ['shoji:open', 'shoji:script', 'shoji:loaded'], 'each event once');
+});
+
+test('iframe: scripts that finish in time are not announced a second time by the timer', () => {
+  const { click, appended, events, timers } = setup(digistore);
+  click();
+  appended[0].onload();
+  appended[1].onerror();
+  assert.deepEqual(tags(appended), ['SCRIPT', 'SCRIPT', 'IFRAME']);
+  elapse(timers);
+  assert.deepEqual(tags(appended), ['SCRIPT', 'SCRIPT', 'IFRAME'], 'the timer opens no second frame');
+  assert.deepEqual(events, ['shoji:open', 'shoji:script', 'shoji:loaded']);
+});
+
+test('iframe: without provider scripts the frame opens at once, no script timer', () => {
+  const { click, appended, timers } = setup({ 'data-shoji-frame': 'https://site.example/shoji/frame/youtube/dQw4w9WgXcQ?s=abc' });
+  click();
+  assert.deepEqual(tags(appended), ['IFRAME']);
+  assert.equal(timers.length, 1, 'only the frame\'s own timer');
+});
+
+test('html: scripts that never answer do not hold shoji:loaded back; late ones change nothing', async () => {
+  const { click, appended, events, timers, box, settle } = setup({ ...brevo, 'data-shoji-style': '' }, { fetch: ok(markup) });
+  click();
+  await settle();
+  assert.deepEqual(events, ['shoji:open', 'shoji:inserted:shoji-markup'], 'markup is in, the first script is pending');
+  assert.equal(box.attrs['data-shoji-state'], 'opened');
+  elapse(timers);
+  assert.deepEqual(events, ['shoji:open', 'shoji:inserted:shoji-markup', 'shoji:script', 'shoji:loaded']);
+  const scripts = appended.filter((e) => e.tagName === 'SCRIPT');
+  scripts[0].onload(); // late: runs, the next one follows
+  const later = appended.filter((e) => e.tagName === 'SCRIPT');
+  assert.equal(later.length, 2);
+  later[1].onload();
+  elapse(timers);
+  assert.equal(events.length, 4, 'nothing announced twice');
+});
+
+test('html: markup that does not arrive within 5 seconds follows the plain link, a late answer changes nothing', async () => {
+  let answer;
+  const { click, box, window, settle, events, timers } = setup({ ...brevo, 'data-shoji-style': '' }, { fetch: () => new Promise((resolve) => { answer = resolve; }) });
+  assert.equal(click(), true);
+  await settle();
+  assert.equal(box.attrs['data-shoji-state'], 'loading', 'waiting');
+  assert.equal(window.location.href, 'https://site.example/page', 'not left yet');
+  elapse(timers);
+  assert.equal(window.location.href, 'https://site.example/shoji/go/x/y?s=link', 'the plain link, as for an error');
+  assert.equal(box.hasAttribute('data-shoji-state'), false, 'placeholder usable again');
+  assert.equal(box.classes.has('shoji-loading'), false);
+  answer({ ok: true, status: 200, text: () => Promise.resolve(markup) }); // too late
+  await settle();
+  assert.equal(box.children.length, 1, 'no markup inserted afterwards');
+  assert.deepEqual(events, ['shoji:open']);
+});
+
+test('html: markup that arrives in time is not disturbed by the timer', async () => {
+  const { click, box, window, settle, events, timers } = setup({ ...brevo, 'data-shoji-style': '', 'data-shoji-script': '' }, { fetch: ok(markup) });
+  click();
+  await settle();
+  assert.equal(box.attrs['data-shoji-state'], 'opened');
+  elapse(timers);
+  assert.equal(window.location.href, 'https://site.example/page', 'not left');
+  assert.equal(box.attrs['data-shoji-state'], 'opened');
+  assert.deepEqual(events, ['shoji:open', 'shoji:inserted:shoji-markup', 'shoji:loaded']);
+});
+
+test('html: a late error of an attempt that timed out does not reset the next attempt', async () => {
+  const pending = [];
+  const { click, box, settle, timers } = setup({ ...brevo, 'data-shoji-style': '' }, { fetch: () => new Promise((resolve, reject) => pending.push({ resolve, reject })) });
+  click();
+  await settle();
+  elapse(timers);
+  assert.equal(box.hasAttribute('data-shoji-state'), false, 'first attempt given up');
+  click(); // the visitor tries again
+  assert.equal(box.attrs['data-shoji-state'], 'loading');
+  pending[0].reject(new Error('late'));
+  await settle();
+  assert.equal(box.attrs['data-shoji-state'], 'loading', 'the second attempt is left alone');
+  assert.equal(box.classes.has('shoji-loading'), true);
+});

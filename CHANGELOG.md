@@ -43,6 +43,18 @@ All notable changes to this project are documented here. Versions follow
   preview image request of an unlisted Vimeo video names its hash; a
   playlist has no preview image.
 
+- **A helper script that never answers no longer holds the content back.**
+  `loadScripts()` waited for `load`/`error` of each provider script without a
+  time limit, so a connection that just hung kept the iframe from opening
+  and the container on `shoji-loading` for as long as the stall lasted.
+  Scripts, stylesheets, markup and iframe now each get 5 seconds: after that
+  the iframe opens (kind `html`: `shoji:loaded` fires) without the script,
+  `shoji:script` and `shoji:loaded` come once, and the state resolves. A
+  script that arrives late still loads and runs, in its order, and opens
+  nothing twice. The markup fetch of kind `html` has the same limit; markup
+  that has not arrived by then takes the way out of a failed fetch, the
+  button's plain link.
+
 ### Added
 
 - Provider `youtube-playlist` (`youtube.com/playlist?list=…`,
