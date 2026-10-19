@@ -1,5 +1,5 @@
 /*!
- * Shoji — click-to-load for Kirby CMS. https://github.com/simsimmal/kirby-shoji
+ * Shoji — click-to-load for Kirby CMS. https://github.com/sayamaapps/kirby-shoji
  *
  * A [data-shoji] placeholder loads its iframe (and, first, optional
  * provider scripts) only when the visitor clicks it. Every address comes

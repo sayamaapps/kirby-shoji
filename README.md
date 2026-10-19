@@ -33,7 +33,7 @@ Composer installs the plugin into `site/plugins/shoji/` (via `getkirby/composer-
 Until the package is on Packagist, add the repository first:
 
 ```json
-"repositories": [{ "type": "vcs", "url": "https://github.com/simsimmal/kirby-shoji" }]
+"repositories": [{ "type": "vcs", "url": "https://github.com/sayamaapps/kirby-shoji" }]
 ```
 
 ## Usage
