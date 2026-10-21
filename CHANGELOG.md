@@ -11,6 +11,86 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [1.3.0] — 2026-10-17
+
+### Fixed
+
+- **An address on a YouTube, Vimeo or Digistore24 host that Shoji did not
+  recognise no longer reaches Kirby's own video output.** The video block and
+  the `(video:)` tag handed such an address to Kirby, which printed an iframe
+  (YouTube playlists, Vimeo showcase and album links, Vimeo ids of fewer than
+  six digits) or a `<video>` that loaded the provider with the page, before
+  any click. They now print a note and a plain link to the address (new
+  snippet `shoji/fallback`), the same for tag and block. The hosts:
+  `youtube.com`, `youtu.be`, `youtube-nocookie.com`, `vimeo.com`,
+  `digistore24.com` and their subdomains (`Providers::isProtectedHost()`).
+  Other hosts and media files stay Kirby's. Only with `shoji.active`.
+- **[privacy text]** README, PRIVACY.md and the operator notes in
+  DATENSCHUTZ.md: addresses Shoji cannot embed. The text blocks are
+  unchanged; the page now does what they already said.
+- **A pasted address arrives complete** (`Embed::fromUrl()` took only the id).
+  Vimeo's `h` (hash of an unlisted video) now reaches the player address, the
+  plain link (`vimeo.com/<id>/<h>`) and the oEmbed request for the preview
+  image; Digistore24's order form (`…/product/<id>/<form>`) and `aff`/`cam` reach
+  the iframe and the plain link `/shoji/go`; a YouTube
+  `embed/videoseries?list=…` address is no longer the video "videoseries"
+  but a playlist. Parameters given explicitly next to the address win over
+  what the address carries. All of it is covered by the signature. What a
+  provider cannot carry (an invalid `h`, an over-long `aff`, a Digistore24
+  `redir/<id>/<affiliate>/<campaign>` path) is not taken over and lands in
+  the fallback above, with the pasted address as the link.
+- **[privacy text]** PRIVACY.md and the operator notes in DATENSCHUTZ.md: the
+  preview image request of an unlisted Vimeo video names its hash; a
+  playlist has no preview image.
+
+- **A helper script that never answers no longer holds the content back.**
+  `loadScripts()` waited for `load`/`error` of each provider script without a
+  time limit, so a connection that just hung kept the iframe from opening
+  and the container on `shoji-loading` for as long as the stall lasted.
+  Scripts, stylesheets, markup and iframe now each get 5 seconds: after that
+  the iframe opens (kind `html`: `shoji:loaded` fires) without the script,
+  `shoji:script` and `shoji:loaded` come once, and the state resolves. A
+  script that arrives late still loads and runs, in its order, and opens
+  nothing twice. The markup fetch of kind `html` has the same limit; markup
+  that has not arrived by then takes the way out of a failed fetch, the
+  button's plain link.
+
+- **Behind Sudare (preview protection) preview images are no longer cacheable
+  by a shared cache.** `/shoji/thumb/…` answered with `public, max-age=…`
+  (the blank SVG with `public, max-age=3600`, the image with 30 days), which
+  let a shared HTTP cache in front of a protected preview store an image
+  fetched with the preview credentials and serve it to anonymous requests.
+  While `\Sudare\Sudare::active()` is true both answers now send
+  `private, no-store`; nothing else about them changes. Without Sudare the
+  headers stay as they were. No new dependency, no change to a provider
+  address.
+
+### Added
+
+- Provider `youtube-playlist` (`youtube.com/playlist?list=…`,
+  `embed/videoseries?list=…`): the player `www.youtube-nocookie.com/embed/videoseries?list=…`
+  and the plain link `www.youtube.com/playlist?list=…`, behind the same
+  placeholder (no preview image). Own provider name: `shoji.open` for
+  `youtube` does not open playlists.
+- Provider field `urlParams`: a closure for the parameters a pasted address
+  carries besides the id (null: not taken over). The built-in Vimeo and
+  Digistore24 use it.
+- `shoji_video($kirby, $url)`: the placeholder, the fallback or `null`
+  (Kirby's own output) for an address, shared by the tag and the block.
+- Text `fallback` (en, de), usable with `shoji.texts`; the link uses `open`.
+
+### Changed
+
+- Built-in provider addresses (a minor change by the rules above): Vimeo's
+  link is `https://vimeo.com/{id}{/h}` (without a hash as before); the Vimeo
+  preview closure takes a third argument, `array $params` (closures with two
+  parameters keep working).
+- The preview image address `/shoji/thumb/…` carries `p=` (signed) when the
+  embed has parameters, like the frame and link addresses; without
+  parameters it is the address it was. Pages cached with the old form keep
+  working.
+- A YouTube `videoseries` is no longer a valid `youtube` video id.
+
 ## [1.2.0] — 2026-10-13
 
 ### Added

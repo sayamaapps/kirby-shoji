@@ -49,7 +49,7 @@ jobs:
           if grep -nE 'localStorage|sessionStorage|document\.cookie|indexedDB' assets/shoji.js; then
             echo "::error::shoji.js must not store anything in the browser"; exit 1
           fi
-          if grep -nPi 'https?://(?!github\.com/simsimmal)' assets/shoji.js; then
+          if grep -nPi 'https?://(?!github\.com/sayamaapps)' assets/shoji.js; then
             echo "::error::shoji.js must not name any address except the project page"; exit 1
           fi
 

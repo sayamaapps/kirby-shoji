@@ -4,7 +4,7 @@
     "type": "kirby-plugin",
     "license": "MIT",
     "keywords": ["kirby", "kirby-plugin", "kirby-5", "privacy", "gdpr", "youtube", "vimeo", "click-to-load", "embed", "facade", "brevo", "forms"],
-    "homepage": "https://github.com/simsimmal/kirby-shoji",
+    "homepage": "https://github.com/sayamaapps/kirby-shoji",
     "authors": [
         {
             "name": "Simon Räder",
@@ -12,8 +12,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/simsimmal/kirby-shoji/issues",
-        "source": "https://github.com/simsimmal/kirby-shoji"
+        "issues": "https://github.com/sayamaapps/kirby-shoji/issues",
+        "source": "https://github.com/sayamaapps/kirby-shoji"
     },
     "require": {
         "php": "^8.2",
