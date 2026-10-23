@@ -24,12 +24,6 @@ Shoji keeps YouTube and Vimeo videos, Digistore24 order forms and HTML forms suc
 composer require sayamaapps/kirby-shoji
 ```
 
-Until the package is on Packagist, add the repository to `composer.json` first:
-
-```json
-"repositories": [{ "type": "vcs", "url": "https://github.com/sayamaapps/kirby-shoji" }]
-```
-
 Composer installs to `site/plugins/shoji/`. Add that path to `.gitignore` and deploy it like `vendor/`.
 
 ## Usage
