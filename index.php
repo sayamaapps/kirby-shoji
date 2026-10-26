@@ -23,6 +23,7 @@ require_once __DIR__ . '/legacy.php';
 App::plugin(
 	name: 'sayamaapps/shoji',
 	extends: [
+		'options'      => require __DIR__ . '/config/options.php',
 		'translations' => require __DIR__ . '/config/translations.php',
 		'snippets'     => require __DIR__ . '/config/snippets.php',
 		'siteMethods'  => require __DIR__ . '/config/site-methods.php',

@@ -4,11 +4,12 @@ namespace Sayamaapps\Shoji;
 
 use Closure;
 use Kirby\Cms\App;
+use Kirby\Cms\Helpers;
 use Sudare\Sudare;
 use WeakMap;
 
 /**
- * Reads `shoji.*` options.
+ * Reads `sayamaapps.shoji.*` options, with the 1.x names `shoji.*` as fallback.
  *
  * `null` counts as "not set", like Kirby's own option() (A::get() checks
  * isset() as well), so `'shoji.privacy' => null` falls back to the default.
@@ -18,7 +19,11 @@ use WeakMap;
  */
 final class Options
 {
-	public const PREFIX = 'shoji.';
+	/** Option prefix since 1.4 (OPT-1). */
+	public const PREFIX = 'sayamaapps.shoji.';
+
+	/** Option prefix of 1.x, read as a fallback until the next major version. */
+	public const LEGACY_PREFIX = 'shoji.';
 
 	/** Pages tried, in this order, for the privacy link when `shoji.privacy` is not set. */
 	public const PRIVACY_PAGES = ['datenschutz', 'datenschutzerklaerung', 'privacy', 'privacy-policy'];
@@ -35,9 +40,26 @@ final class Options
 		return rtrim($kirby->root('storage') ?? ($kirby->root('site') . '/storage'), '/') . '/shoji';
 	}
 
+	/**
+	 * Reads `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>` still works as a
+	 * fallback and is reported as a deprecation (README, Deprecations).
+	 */
 	public static function get(App $kirby, string $key, mixed $default = null): mixed
 	{
-		return $kirby->option(self::PREFIX . $key) ?? $default;
+		$value = $kirby->option(self::PREFIX . $key);
+		if ($value !== null) {
+			return $value;
+		}
+
+		$legacy = $kirby->option(self::LEGACY_PREFIX . $key);
+		if ($legacy !== null) {
+			Helpers::deprecated(
+				'Shoji: shoji.' . $key . ' is deprecated, use ' . self::PREFIX . $key,
+				'option-prefix'
+			);
+		}
+
+		return $legacy ?? $default;
 	}
 
 	/**
