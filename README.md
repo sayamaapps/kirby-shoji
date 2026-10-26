@@ -135,10 +135,10 @@ Test with `Content-Security-Policy-Report-Only` first. YouTube refuses to play w
 - Preview images are fetched by your server, cached in `storage/shoji/`, and served from there.
 - Providers switched on with `shoji.open` load with the page, so your privacy policy must say so.
 - A plain link to an address Shoji cannot embed is followed by the visitor, not requested by the page.
-- See [PRIVACY.md](PRIVACY.md) (English) and [DATENSCHUTZ.md](DATENSCHUTZ.md) (German text blocks for privacy policies); neither is legal advice.
+- See [PRIVACY.md](docs/PRIVACY.md) (English) and [DATENSCHUTZ.md](docs/DATENSCHUTZ.md) (German text blocks for privacy policies); neither is legal advice.
 
 Tests: `composer test` (PHP) and `node --test tests/*.test.mjs` (`shoji.js`). Issues and pull requests are welcome, without a support promise. Report security problems privately through GitHub's vulnerability reporting. Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE.md).

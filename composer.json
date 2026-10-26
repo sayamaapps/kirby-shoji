@@ -1,8 +1,8 @@
 {
     "name": "sayamaapps/kirby-shoji",
     "description": "Kirby CMS plugin: YouTube, Vimeo, Digistore24 and forms load only after the visitor clicks.",
-    "type": "kirby-plugin",
     "license": "MIT",
+    "type": "kirby-plugin",
     "keywords": [
         "kirby",
         "kirby-plugin",
@@ -17,13 +17,13 @@
         "brevo",
         "forms"
     ],
-    "homepage": "https://github.com/sayamaapps/kirby-shoji",
     "authors": [
         {
             "name": "Simon Räder",
             "homepage": "https://sayamaapps.de"
         }
     ],
+    "homepage": "https://github.com/sayamaapps/kirby-shoji",
     "support": {
         "issues": "https://github.com/sayamaapps/kirby-shoji/issues",
         "source": "https://github.com/sayamaapps/kirby-shoji"
@@ -33,26 +33,42 @@
         "getkirby/composer-installer": "^1.2"
     },
     "require-dev": {
+        "ergebnis/composer-normalize": "^2.54",
         "getkirby/cms": "^5.0",
-        "phpunit/phpunit": "11.5.55"
+        "icanhazstring/composer-unused": "^0.9.7",
+        "maglnet/composer-require-checker": "^4.0",
+        "phpmd/phpmd": "^2.15",
+        "phpunit/phpunit": "11.5.55",
+        "vimeo/psalm": "^6.20"
     },
-    "scripts": {
-        "test": "vendor/bin/phpunit"
+    "suggest": {
+        "ext-curl": "Faster preview image requests. Without it the stream wrapper is used.",
+        "sayamaapps/kirby-sudare": "Preview protection: Shoji answers preview images without shared caching while Sudare protects the page."
     },
     "config": {
-        "optimize-autoloader": true,
         "allow-plugins": {
+            "ergebnis/composer-normalize": true,
             "getkirby/composer-installer": true
         },
+        "optimize-autoloader": true,
         "platform": {
-            "php": "8.2.0"
-        }
+            "php": "8.2.27"
+        },
+        "sort-packages": true
     },
     "extra": {
         "installer-name": "shoji",
-        "kirby-cms-path": false,
         "kirby": {
             "compatible": "^5.0"
-        }
+        },
+        "kirby-cms-path": false
+    },
+    "scripts": {
+        "analyze:phpmd": "vendor/bin/phpmd src,config,index.php,legacy.php,autoload.php github phpmd.xml.dist",
+        "analyze:psalm": "vendor/bin/psalm",
+        "analyze:require-checker": "vendor/bin/composer-require-checker check --config-file=composer-require-checker.json composer.json",
+        "analyze:unused": "vendor/bin/composer-unused",
+        "normalize:check": "@composer normalize --dry-run",
+        "test": "vendor/bin/phpunit"
     }
 }
