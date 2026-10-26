@@ -6,7 +6,7 @@ use Sayamaapps\Shoji\Options;
 
 /**
  * Options are read as sayamaapps.shoji.<key>, with the 1.x spelling shoji.<key>
- * as fallback (OPT-1). The fallback is reported as a deprecation in debug mode.
+ * as fallback. The fallback is reported as a deprecation in debug mode.
  */
 #[CoversClass(Options::class)]
 final class OptionsPrefixTest extends TestCase

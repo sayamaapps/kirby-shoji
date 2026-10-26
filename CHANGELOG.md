@@ -7,9 +7,22 @@ All notable changes to this project are documented here. Versions follow
   click, or without one) is a **major** version, whatever the code change.
 - **A change to a built-in provider's addresses** (embed, link, script,
   preview image) is at least a minor version and listed here.
-- A change to the privacy text (`DATENSCHUTZ.md` / `PRIVACY.md`) is marked
+- A change to the privacy text (`docs/DATENSCHUTZ.md` / `docs/PRIVACY.md`) is marked
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
+
+## [Unreleased]
+
+### Changed
+
+- Options are read as `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>`
+  still works as a fallback and is reported as a deprecation in debug mode.
+- The helper functions (`shoji_embed()`, `shoji_video()` and the others) are
+  deprecated wrappers around `Sayamaapps\Shoji\Api`. Their names keep working.
+- The classes live in the `Sayamaapps\Shoji` namespace; the 1.x names are aliases.
+- The preview image fetcher is passed to `Thumbs` instead of a static test hook.
+- The privacy texts are in `docs/`. Installed packages do not include the tests,
+  CI, the analysis configuration or the repository documents.
 
 ## [1.3.1] — 2026-10-26
 

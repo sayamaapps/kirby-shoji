@@ -27,7 +27,7 @@ final class Options
 	/** Option prefix of 1.x, read as a fallback until the next major version. */
 	public const LEGACY_PREFIX = 'shoji.';
 
-	/** Option prefix since 1.4 (OPT-1). */
+	/** Option prefix of the current spelling. */
 	public const PREFIX = 'sayamaapps.shoji.';
 
 	/** Pages tried, in this order, for the privacy link when `shoji.privacy` is not set. */
