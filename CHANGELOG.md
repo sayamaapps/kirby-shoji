@@ -11,6 +11,16 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [Unreleased]
+
+### Fixed
+
+- **A corrected Vimeo hash shows its preview image at once.** The memory of a
+  failed preview fetch was kept per video id only, so a link corrected to the
+  right `h` parameter stayed without an image for up to a day. The memory now
+  belongs to the address parameters it was made with; the same parameters are
+  still not asked again within a day.
+
 ## [1.3.0] — 2026-10-17
 
 ### Fixed
