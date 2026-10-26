@@ -5,6 +5,7 @@ namespace Sayamaapps\Shoji;
 use Closure;
 use Kirby\Cms\App;
 use Sudare\Sudare;
+use WeakMap;
 
 /**
  * Reads `shoji.*` options.
@@ -78,7 +79,7 @@ final class Options
 	public static function open(App $kirby): array
 	{
 		static $cache = null;
-		$cache ??= new \WeakMap();
+		$cache ??= new WeakMap();
 		return $cache[$kirby] ??= Providers::open(self::get($kirby, 'open'), Embed::providers($kirby));
 	}
 
@@ -142,6 +143,8 @@ final class Options
 	 * protection (Sudare's contract for other packages: `class_exists(\Sudare\Sudare::class)
 	 * && \Sudare\Sudare::active()`, no Composer dependency), so a shared cache in
 	 * front of a protected preview stores nothing; otherwise `public, max-age=N`.
+	 *
+	 * @psalm-suppress UndefinedClass Sudare is optional; the class_exists() guard decides.
 	 */
 	public static function thumbCacheControl(int $maxAge): string
 	{

@@ -22,6 +22,9 @@ final class Http
 	private static function curl(string $url): array
 	{
 		$handle = curl_init($url);
+		if ($handle === false) {
+			return [0, ''];
+		}
 		$body = '';
 		curl_setopt_array($handle, [
 			CURLOPT_FOLLOWLOCATION => true,

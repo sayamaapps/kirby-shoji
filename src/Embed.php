@@ -4,6 +4,7 @@ namespace Sayamaapps\Shoji;
 
 use Closure;
 use Kirby\Cms\App;
+use WeakMap;
 
 /**
  * One piece of third-party content behind a placeholder: provider, id,
@@ -86,8 +87,9 @@ final class Embed
 				continue;
 			}
 			$carried = [];
-			if (($definition['urlParams'] ?? null) instanceof Closure) {
-				$carried = $definition['urlParams']($url, $m);
+			$urlParams = $definition['urlParams'] ?? null;
+			if ($urlParams instanceof Closure) {
+				$carried = $urlParams($url, $m);
 				if (!is_array($carried)) {
 					continue;
 				}
@@ -209,7 +211,7 @@ final class Embed
 	{
 		// Per Kirby instance (tests build several in one process)
 		static $cache = null;
-		$cache ??= new \WeakMap();
+		$cache ??= new WeakMap();
 		return $cache[$kirby] ??= Providers::all(Options::get($kirby, 'providers'));
 	}
 
@@ -228,7 +230,7 @@ final class Embed
 	public static function signer(App $kirby): Signer
 	{
 		static $cache = null;
-		$cache ??= new \WeakMap();
+		$cache ??= new WeakMap();
 		return $cache[$kirby] ??= new Signer(Options::secret($kirby));
 	}
 
@@ -247,7 +249,7 @@ final class Embed
 	 */
 	public function snippet(): string|null
 	{
-		return $this->kind() === 'html' ? str_replace('{id}', $this->id, $this->definition['snippet']) : null;
+		return $this->kind() === 'html' ? str_replace('{id}', $this->id, (string)$this->definition['snippet']) : null;
 	}
 
 	/** @return list<string> kind 'html': own addresses of the provider's stylesheets */

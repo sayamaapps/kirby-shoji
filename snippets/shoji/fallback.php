@@ -14,6 +14,7 @@
  * @var string|null $url the pasted address
  */
 
+use Sayamaapps\Shoji\Api;
 use Sayamaapps\Shoji\I18n;
 use Sayamaapps\Shoji\Providers;
 
@@ -21,7 +22,7 @@ $provider = isset($url) && is_string($url) ? Providers::protectedProvider($url) 
 if ($provider === null) {
 	return;
 }
-shoji_i18n();
+Api::i18n(kirby());
 $names = ['name' => Providers::PROTECTED[$provider]['name']];
 $href = Providers::plainLink($url);
 ?>

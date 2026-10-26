@@ -3,7 +3,7 @@
  * The placeholder, the plain default shipped with Shoji. No CSS: the look
  * belongs to the site (classes shoji-*). For your own markup create
  * site/snippets/shoji/embed.php (Kirby takes that one first) and build it
- * from shoji_embed() — see the README.
+ * from Api::embed() — see the README.
  *
  *   <?php snippet('shoji/embed', ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'title' => 'Trailer']) ?>
  *   <?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'params' => ['form' => '78901']]) ?>
@@ -35,16 +35,17 @@
  *                the provider's switch in `shoji.open`
  */
 
+use Sayamaapps\Shoji\Api;
 use Sayamaapps\Shoji\I18n;
 use Sayamaapps\Shoji\Options;
 
 $embed ??= isset($url) && is_string($url)
-	? shoji_embed($url, null, $params ?? [], $title ?? null)
-	: (isset($provider, $id) ? shoji_embed((string)$provider, (string)$id, $params ?? [], $title ?? null) : null);
+	? Api::embed(kirby(), $url, null, $params ?? [], $title ?? null)
+	: (isset($provider, $id) ? Api::embed(kirby(), (string)$provider, (string)$id, $params ?? [], $title ?? null) : null);
 if ($embed === null) {
 	return;
 }
-shoji_i18n();
+Api::i18n(kirby());
 $t = fn (string $key, array $values = []) => I18n::t($key, $values);
 $names = ['name' => $embed->name(), 'company' => $embed->company()];
 
@@ -113,4 +114,4 @@ $data['data-shoji-frame-class'] = $html ? '' : ($frameClass ?? '');
   <p class="shoji-note"><?= esc($note) ?><?php if ($privacy) : ?> <a class="shoji-privacy" href="<?= esc($privacy) ?>"><?= esc($t('privacy')) ?></a><?php endif ?></p>
   <?php endif ?>
 </div>
-<?= shoji_script_tag() ?>
+<?= Api::scriptTag(kirby()) ?>

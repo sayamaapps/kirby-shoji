@@ -85,6 +85,27 @@ final class Providers
 	/** A snippet name after {id} is filled: path segments, no dots, so nothing outside the snippet roots. */
 	public const SNIPPET = '~^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$~';
 
+	/** Problems with the addresses, scripts, stylesheets and thumbnails of a definition, or null. */
+	private static function addressProblem(array $definition): string|null
+	{
+		foreach (['embed', 'link'] as $key) {
+			if (isset($definition[$key]) && (!is_string($definition[$key]) || !str_starts_with($definition[$key], 'https://'))) {
+				return "'$key' must be an https address";
+			}
+		}
+		foreach (['script', 'style'] as $key) {
+			$list = self::assets($definition, $key);
+			if ($list === null || count($list) > self::ASSETS_MAX) {
+				return "'$key' must be an https address or a list of up to " . self::ASSETS_MAX;
+			}
+		}
+		$thumbnails = $definition['thumbnails'] ?? [];
+		if (!$thumbnails instanceof Closure && !is_array($thumbnails)) {
+			return "'thumbnails' must be a list or a closure";
+		}
+		return null;
+	}
+
 	/**
 	 * Built-in providers merged with `shoji.providers`. Invalid definitions
 	 * are dropped and logged, so a typo in the configuration never renders a
@@ -257,7 +278,7 @@ final class Providers
 	public static function fill(string $template, string $id, array $params): string
 	{
 		$used = [];
-		$url = preg_replace_callback('~\{(/?)([A-Za-z][A-Za-z0-9_]*)\}~', function (array $m) use ($id, $params, &$used) {
+		$url = (string)preg_replace_callback('~\{(/?)([A-Za-z][A-Za-z0-9_]*)\}~', function (array $m) use ($id, $params, &$used) {
 			[, $slash, $name] = $m;
 			if ($name === 'id') {
 				return $slash . rawurlencode($id);
@@ -343,6 +364,24 @@ final class Providers
 		return $clean;
 	}
 
+	/** Problems with the id, the match, the urlParams and the snippet of a definition, or null. */
+	private static function patternProblem(array $definition, bool $html): string|null
+	{
+		if (@preg_match($definition['id'], '') === false) {
+			return "'id' is no valid regular expression";
+		}
+		if (isset($definition['match']) && (!is_string($definition['match']) || $definition['match'] === '' || @preg_match($definition['match'], '') === false)) {
+			return "'match' is no valid regular expression";
+		}
+		if (isset($definition['urlParams']) && !$definition['urlParams'] instanceof Closure) {
+			return "'urlParams' must be a closure";
+		}
+		if ($html && !preg_match(self::SNIPPET, str_replace('{id}', 'id', (string)$definition['snippet']))) {
+			return "'snippet' must be a snippet name like 'forms/{id}'";
+		}
+		return null;
+	}
+
 	/**
 	 * The address for the plain link that stands in for an address Shoji
 	 * cannot embed: the pasted address itself, https for a scheme-relative
@@ -367,34 +406,7 @@ final class Providers
 				return "'$key' is missing";
 			}
 		}
-		if (@preg_match($definition['id'], '') === false) {
-			return "'id' is no valid regular expression";
-		}
-		if (isset($definition['match']) && (!is_string($definition['match']) || @preg_match($definition['match'], '') === false)) {
-			return "'match' is no valid regular expression";
-		}
-		if (isset($definition['urlParams']) && !$definition['urlParams'] instanceof Closure) {
-			return "'urlParams' must be a closure";
-		}
-		if ($html && !preg_match(self::SNIPPET, str_replace('{id}', 'id', $definition['snippet']))) {
-			return "'snippet' must be a snippet name like 'forms/{id}'";
-		}
-		foreach (['embed', 'link'] as $key) {
-			if (isset($definition[$key]) && (!is_string($definition[$key]) || !str_starts_with($definition[$key], 'https://'))) {
-				return "'$key' must be an https address";
-			}
-		}
-		foreach (['script', 'style'] as $key) {
-			$list = self::assets($definition, $key);
-			if ($list === null || count($list) > self::ASSETS_MAX) {
-				return "'$key' must be an https address or a list of up to " . self::ASSETS_MAX;
-			}
-		}
-		$thumbnails = $definition['thumbnails'] ?? [];
-		if (!$thumbnails instanceof Closure && !is_array($thumbnails)) {
-			return "'thumbnails' must be a list or a closure";
-		}
-		return null;
+		return self::patternProblem($definition, $html) ?? self::addressProblem($definition);
 	}
 
 	/**

@@ -36,6 +36,23 @@ final class I18n
 		return self::$language;
 	}
 
+	/**
+	 * The tables as Kirby plugin translations, `shoji.<key>` per language, so a
+	 * site can use t('shoji.<key>') as well.
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	public static function pluginTranslations(): array
+	{
+		$translations = [];
+		foreach (self::LANGUAGES as $language) {
+			foreach (self::table($language) as $key => $text) {
+				$translations[$language]['shoji.' . $key] = $text;
+			}
+		}
+		return $translations;
+	}
+
 	public static function setLanguage(string $language): void
 	{
 		self::$language = in_array($language, self::LANGUAGES, true) ? $language : 'en';

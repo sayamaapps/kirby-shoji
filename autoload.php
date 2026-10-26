@@ -7,6 +7,7 @@
  */
 
 return [
+	'sayamaapps\\shoji\\api' => 'src/Api.php',
 	'sayamaapps\\shoji\\embed' => 'src/Embed.php',
 	'sayamaapps\\shoji\\http' => 'src/Http.php',
 	'sayamaapps\\shoji\\i18n' => 'src/I18n.php',

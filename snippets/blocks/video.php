@@ -2,7 +2,7 @@
 /**
  * Video block (replaces Kirby's own). A YouTube or Vimeo address pasted in
  * the Panel becomes a Shoji placeholder, one Shoji cannot embed a note with a
- * plain link (shoji_video(), the same as for the (video:) tag); a video from
+ * plain link (Api::video(), the same as for the (video:) tag); a video from
  * the media library, another host, or Shoji switched off: Kirby's own block,
  * unchanged.
  *
@@ -11,8 +11,10 @@
  * @var \Kirby\Cms\Block $block
  */
 
+use Sayamaapps\Shoji\Api;
+
 $kirby = $block->kirby();
-$content = $block->location()->value() !== 'kirby' ? shoji_video($kirby, $block->url()->value()) : null;
+$content = $block->location()->value() !== 'kirby' ? Api::video($kirby, $block->url()->value()) : null;
 
 if ($content === null) {
 	include $kirby->root('kirby') . '/config/blocks/video/video.php';
