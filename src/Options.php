@@ -19,11 +19,11 @@ use WeakMap;
  */
 final class Options
 {
-	/** Option prefix since 1.4 (OPT-1). */
-	public const PREFIX = 'sayamaapps.shoji.';
-
 	/** Option prefix of 1.x, read as a fallback until the next major version. */
 	public const LEGACY_PREFIX = 'shoji.';
+
+	/** Option prefix since 1.4 (OPT-1). */
+	public const PREFIX = 'sayamaapps.shoji.';
 
 	/** Pages tried, in this order, for the privacy link when `shoji.privacy` is not set. */
 	public const PRIVACY_PAGES = ['datenschutz', 'datenschutzerklaerung', 'privacy', 'privacy-policy'];
