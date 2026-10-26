@@ -267,6 +267,29 @@ PHP);
     }
     Http::$fake = null;
 
+    // A corrected Vimeo hash is fetched at once: the miss of the old hash does not hold back the new address.
+    $hashKirby = $app($on);
+    $wrongHash = \Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'wronghash1']);
+    $rightHash = \Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'abcdef1234']);
+    $hashAsked = [];
+    Http::$fake = function (string $url) use (&$hashAsked, $jpeg): array {
+        $hashAsked[] = $url;
+        if (str_contains($url, 'api/oembed.json') && str_contains($url, rawurlencode('/abcdef1234'))) {
+            return [200, json_encode(['thumbnail_url' => 'https://i.vimeocdn.com/video/76979871_1280.jpg'])];
+        }
+        return str_contains($url, 'i.vimeocdn.com') ? [200, $jpeg] : [404, ''];
+    };
+    $hashThumbs = new \Shoji\Thumbs($tmp . '/hash-thumbs');
+    holds($hashThumbs->get($wrongHash) === null, 'wrong hash: no preview image');
+    holds(is_file($tmp . '/hash-thumbs/vimeo/76979871.miss'), 'wrong hash: miss remembered');
+    $hashAsked = [];
+    $hashThumbs->get($wrongHash);
+    expect([], $hashAsked, 'wrong hash again: no new fetch within a day');
+    $image = $hashThumbs->get($rightHash);
+    holds($image !== null && $image['type'] === 'image/jpeg', 'corrected hash: JPEG fetched at once, not held back by the miss');
+    holds(count(array_filter($hashAsked, fn (string $u) => str_contains($u, rawurlencode('/abcdef1234')))) === 1, 'corrected hash: oEmbed asked with the corrected hash');
+    Http::$fake = null;
+
     // 5. Open mode: content right away, still only own addresses.
     file_put_contents($tmp . '/site/templates/home.php', "<?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'open' => true]) ?>");
     $open = $render($on);

@@ -9,8 +9,9 @@ namespace Shoji;
  *
  * A fresh copy is served for 30 days, then fetched again; if that fails the
  * old copy stays. A failed first fetch is remembered for a day (a `.miss`
- * file), so a video without a preview image does not make every page view
- * ask the provider again.
+ * file that holds the address parameters it was made for), so a video without
+ * a preview image does not make every page view ask the provider again. A
+ * corrected parameter (a Vimeo hash) is asked for at once.
  */
 final class Thumbs
 {
@@ -37,11 +38,15 @@ final class Thumbs
         $now ??= time();
         $base = $this->directory . '/' . $embed->provider . '/' . $embed->id;
         $cached = $this->cached($base);
+        // The miss belongs to the address parameters it was made with: a Vimeo hash that
+        // was corrected asks the provider again, the same one does not.
+        $missKey = Embed::encodeParams($embed->params);
 
         if ($cached !== null && $now - (int) filemtime($cached['file']) < self::MAX_AGE) {
             return $cached;
         }
-        if ($cached === null && is_file($base . '.miss') && $now - (int) filemtime($base . '.miss') < self::MISS_AGE) {
+        if ($cached === null && is_file($base . '.miss') && $now - (int) filemtime($base . '.miss') < self::MISS_AGE
+            && file_get_contents($base . '.miss') === $missKey) {
             return null;
         }
 
@@ -51,7 +56,7 @@ final class Thumbs
                 @touch($cached['file'], $now); // try again in 30 days, keep showing the old one
                 return $cached;
             }
-            $this->write($base . '.miss', '', $now);
+            $this->write($base . '.miss', $missKey, $now);
             return null;
         }
 
