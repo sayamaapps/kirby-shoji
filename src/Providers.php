@@ -16,7 +16,7 @@ use Closure;
  *   'kind'       => 'video',               'video' | 'form' | 'content' | 'html' (picks the texts)
  *   'id'         => '/^…$/',               a valid id, checked on render and in every route
  *   'match'      => '~…(id)…~i',           optional: finds the id (first group) in a pasted address
- *   'urlParams'  => fn (string $url, array $match): ?array
+ *   'urlParams'  => fn (string $url, array $match): array|null
  *                                          optional: the parameters a pasted address carries besides
  *                                          the id (Vimeo's h, Digistore24's form, aff, cam); null: a
  *                                          form of the address this provider cannot carry, so it is
@@ -53,6 +53,11 @@ use Closure;
  * the click (see open()):
  *
  *   'shoji.open' => ['brevo' => true]
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class Providers
 {

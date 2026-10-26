@@ -104,7 +104,7 @@ final class Api
 	/** The preview image from the cache or the provider; a blank image in the right proportions if there is none. */
 	private static function preview(App $kirby, Embed $embed): Response
 	{
-		$image = $embed->hasThumbnail() ? (new Thumbs(Options::directory($kirby) . '/thumbs'))->get($embed) : null;
+		$image = $embed->hasThumbnail() ? (new Thumbs(Options::directory($kirby) . '/thumbs', Http::get(...)))->get($embed) : null;
 		if ($image === null) {
 			[$width, $height] = $embed->size() ?? [16, 9];
 			return new Response(

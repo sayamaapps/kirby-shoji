@@ -29,7 +29,6 @@ use Kirby\Http\Response;
 use Kirby\Template\Snippet;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Sayamaapps\Shoji\Http;
 
 #[CoversClass(\Sayamaapps\Shoji\Embed::class)]
 #[CoversClass(\Sayamaapps\Shoji\Options::class)]
@@ -199,25 +198,17 @@ final class KirbyTest extends TestCase
 			$bad = $on + ['shoji.url' => fn () => 'javascript:alert(1)'];
 			expect(404, $call($ds, $bad)->code(), 'hook returning a non-https address is refused');
 
-			// 4. Preview image: fetched once, cached, served from the site.
+			// 4. Preview image: served from the cache; the provider is asked by Thumbs only (ThumbsTest).
 			$thumb = current(array_filter($attrs($html, 'src'), fn ($u) => str_contains($u, '/thumb/youtube/dQw4w9WgXcQ')));
 			$jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 2000);
-			$asked = [];
-			Http::$fake = function (string $url) use (&$asked, $jpeg): array {
-				$asked[] = $url;
-				return str_contains($url, 'maxresdefault') ? [404, str_repeat('p', 1100)] : [200, $jpeg];
-			};
+			mkdir($tmp . '/storage/shoji/thumbs/youtube', 0700, true);
+			file_put_contents($tmp . '/storage/shoji/thumbs/youtube/dQw4w9WgXcQ.jpg', $jpeg);
 			$r = $call($thumb, $on);
 			expect(200, $r->code(), 'preview image served');
 			expect('image/jpeg', $r->type(), 'as JPEG');
-			expect($jpeg, $r->body(), 'the fetched bytes');
+			expect($jpeg, $r->body(), 'the cached bytes');
 			expect('public, max-age=2592000', $r->header('Cache-Control'), 'preview image: public for 30 days without Sudare');
 			expect('nosniff', $r->header('X-Content-Type-Options'), 'preview image: nosniff without Sudare');
-			expect(['https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg'], $asked, 'maxres missing, hq taken');
-			holds(is_file($tmp . '/storage/shoji/thumbs/youtube/dQw4w9WgXcQ.jpg'), 'cached in storage/shoji/thumbs');
-			$asked = [];
-			$call($thumb, $on);
-			expect([], $asked, 'second request from the cache');
 
 			// Behind Sudare (preview protection) a shared cache in front must store neither answer: private, no-store.
 			\Sudare\Sudare::$active = true;
@@ -236,19 +227,14 @@ final class KirbyTest extends TestCase
 
 			// Nothing usable: a blank image, remembered for a day.
 			$vimeoThumb = current(array_filter($attrs($html, 'src'), fn ($u) => str_contains($u, '/thumb/vimeo/')));
-			Http::$fake = function (string $url) use (&$asked): array {
-				$asked[] = $url;
-				return [200, '<html>not an image</html>' . str_repeat(' ', 2000)];
-			};
+			mkdir($tmp . '/storage/shoji/thumbs/vimeo', 0700, true);
+			file_put_contents($tmp . '/storage/shoji/thumbs/vimeo/76979871.miss', ''); // a failed fetch, remembered (no parameters)
 			$r = $call($vimeoThumb, $on);
 			expect('image/svg+xml', $r->type(), 'blank image instead of a broken one');
 			expect('public, max-age=3600', $r->header('Cache-Control'), 'blank image: public for an hour without Sudare');
 			expect('nosniff', $r->header('X-Content-Type-Options'), 'blank image: nosniff without Sudare');
 			$blank = $r->body();
 			holds(is_file($tmp . '/storage/shoji/thumbs/vimeo/76979871.miss'), 'miss remembered');
-			$asked = [];
-			$call($vimeoThumb, $on);
-			expect([], $asked, 'no new fetch within a day after a miss');
 			\Sudare\Sudare::$active = true;
 			try {
 				$r = $call($vimeoThumb, $on);
@@ -260,21 +246,20 @@ final class KirbyTest extends TestCase
 			} finally {
 				\Sudare\Sudare::$active = false;
 			}
-			Http::$fake = null;
 
 			// A corrected Vimeo hash is fetched at once: the miss of the old hash does not hold back the new address.
 			$hashKirby = $app($on);
 			$wrongHash = \Sayamaapps\Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'wronghash1']);
 			$rightHash = \Sayamaapps\Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'abcdef1234']);
 			$hashAsked = [];
-			Http::$fake = function (string $url) use (&$hashAsked, $jpeg): array {
+			$hashFetch = function (string $url) use (&$hashAsked, $jpeg): array {
 				$hashAsked[] = $url;
 				if (str_contains($url, 'api/oembed.json') && str_contains($url, rawurlencode('/abcdef1234'))) {
 					return [200, json_encode(['thumbnail_url' => 'https://i.vimeocdn.com/video/76979871_1280.jpg'])];
 				}
 				return str_contains($url, 'i.vimeocdn.com') ? [200, $jpeg] : [404, ''];
 			};
-			$hashThumbs = new \Sayamaapps\Shoji\Thumbs($tmp . '/hash-thumbs');
+			$hashThumbs = new \Sayamaapps\Shoji\Thumbs($tmp . '/hash-thumbs', $hashFetch);
 			holds($hashThumbs->get($wrongHash) === null, 'wrong hash: no preview image');
 			holds(is_file($tmp . '/hash-thumbs/vimeo/76979871.miss'), 'wrong hash: miss remembered');
 			$hashAsked = [];
@@ -283,7 +268,6 @@ final class KirbyTest extends TestCase
 			$image = $hashThumbs->get($rightHash);
 			holds($image !== null && $image['type'] === 'image/jpeg', 'corrected hash: JPEG fetched at once, not held back by the miss');
 			holds(count(array_filter($hashAsked, fn (string $u) => str_contains($u, rawurlencode('/abcdef1234')))) === 1, 'corrected hash: oEmbed asked with the corrected hash');
-			Http::$fake = null;
 
 			// 5. Open mode: content right away, still only own addresses.
 			file_put_contents($tmp . '/site/templates/home.php', "<?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'open' => true]) ?>");
@@ -567,7 +551,7 @@ final class KirbyTest extends TestCase
 			// 10. A pasted address arrives complete: the full iframe, link and preview image targets,
 			//     for the tag and the block alike (not just the id).
 			/** Where the placeholder in $html leads: [iframe target, plain link target, oEmbed/preview address asked or null]. */
-			$targets = function (string $html, string $why) use ($attrs, $call, $on, $tmp): array {
+			$targets = function (string $html, string $why) use ($app, $attrs, $call, $on, $tmp): array {
 				$frames = $attrs($html, 'data-shoji-frame');
 				preg_match_all('~class="shoji-button[^"]*" href="([^"]*)"~', $html, $go);
 				expect(1, count($frames), "$why: one placeholder");
@@ -575,13 +559,14 @@ final class KirbyTest extends TestCase
 				$asked = [];
 				$image = null;
 				if ($thumbs !== []) {
-					removeTree($tmp . '/storage/shoji/thumbs'); // an earlier answer would be served from the cache
-					Http::$fake = function (string $url) use (&$asked): array {
+					removeTree($tmp . '/probe-thumbs'); // an earlier answer would be served from the cache
+					$probe = new \Sayamaapps\Shoji\Thumbs($tmp . '/probe-thumbs', function (string $url) use (&$asked): array {
 						$asked[] = $url;
 						return str_contains($url, 'oembed') ? [200, '{"thumbnail_url":"https://i.example/vimeo.jpg"}'] : [404, ''];
-					};
-					$call(current($thumbs), $on);
-					Http::$fake = null;
+					});
+					[, , $provider, $id] = explode('/', trim((string)parse_url(html_entity_decode(current($thumbs)), PHP_URL_PATH), '/'));
+					parse_str((string)parse_url(html_entity_decode(current($thumbs)), PHP_URL_QUERY), $query);
+					$probe->get(\Sayamaapps\Shoji\Embed::make($app($on), $provider, $id, \Sayamaapps\Shoji\Embed::decodeParams((string)($query['p'] ?? ''))));
 					$image = $asked[0] ?? null;
 				}
 				return [$call($frames[0], $on)->header('Location'), $call(html_entity_decode($go[1][0]), $on)->header('Location'), $image];

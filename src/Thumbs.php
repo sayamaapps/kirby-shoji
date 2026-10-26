@@ -2,6 +2,8 @@
 
 namespace Sayamaapps\Shoji;
 
+use Closure;
+
 /**
  * Preview images from the provider, fetched by the server and kept in
  * storage/shoji/thumbs/<provider>/. The visitor's browser only ever asks
@@ -12,6 +14,11 @@ namespace Sayamaapps\Shoji;
  * file that holds the address parameters it was made for), so a video without
  * a preview image does not make every page view ask the provider again. A
  * corrected parameter (a Vimeo hash) is asked for at once.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class Thumbs
 {
@@ -22,8 +29,13 @@ final class Thumbs
 	public const MISS_AGE = 86400;
 	public const TYPES = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
 
-	public function __construct(private readonly string $directory)
-	{
+	/**
+	 * @param $fetch fn (string $url): array{0:int,1:string}, the server-side GET (Http::get() in production)
+	 */
+	public function __construct(
+		private readonly string $directory,
+		private readonly Closure $fetch
+	) {
 	}
 
 	/** @return array{file:string,type:string}|null */
@@ -40,9 +52,8 @@ final class Thumbs
 	/** @return array{0:string,1:string}|null bytes and extension of the first usable candidate */
 	private function fetch(Embed $embed): array|null
 	{
-		$fetch = static fn (string $url): array => Http::get($url);
-		foreach ($embed->thumbnailCandidates($fetch) as $url) {
-			[$status, $bytes] = Http::get($url);
+		foreach ($embed->thumbnailCandidates($this->fetch) as $url) {
+			[$status, $bytes] = ($this->fetch)($url);
 			if ($status !== 200 || strlen($bytes) < self::MIN_BYTES) {
 				continue;
 			}

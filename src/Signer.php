@@ -2,26 +2,37 @@
 
 namespace Sayamaapps\Shoji;
 
-use RuntimeException;
+use Kirby\Exception\Exception;
 
 /**
  * Signs Shoji's own addresses (/shoji/thumb|frame|script|go/…), so only
  * addresses this site rendered work. Without the signature the preview image
  * route would be an open proxy: anyone could make the server fetch preview
  * images for arbitrary ids from the provider.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class Signer
 {
 	/** 16 hex characters = 64 bits. Plenty for "did this site render the address". */
 	public const LENGTH = 16;
 
+	/**
+	 * Creates a signer for a secret of at least 16 characters.
+	 */
 	public function __construct(private readonly string $secret)
 	{
 		if (strlen($secret) < 16) {
-			throw new RuntimeException('Shoji: the secret is too short');
+			throw new Exception(message: 'Shoji: the secret is too short');
 		}
 	}
 
+	/**
+	 * The signature of an address: 16 hex characters over kind, provider, id and parameters.
+	 */
 	public function sign(string $kind, string $provider, string $id, string $params = ''): string
 	{
 		$payload = implode('|', [$kind, $provider, $id, $params]);
@@ -60,6 +71,9 @@ final class Signer
 		return $secret;
 	}
 
+	/**
+	 * True if the signature belongs to the address.
+	 */
 	public function verify(string $signature, string $kind, string $provider, string $id, string $params = ''): bool
 	{
 		return strlen($signature) === self::LENGTH &&

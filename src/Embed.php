@@ -13,6 +13,11 @@ use WeakMap;
  *
  * The default snippet uses it; a site with its own markup gets one from
  * shoji_embed() and builds the placeholder from these methods.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class Embed
 {
@@ -29,6 +34,9 @@ final class Embed
 	) {
 	}
 
+	/**
+	 * Value of the iframe `allow` attribute for this provider.
+	 */
 	public function allow(): string
 	{
 		return Providers::allow($this->definition);
@@ -40,6 +48,9 @@ final class Embed
 		return $key === 'style' && $this->kind() !== 'html' ? [] : Providers::assets($this->definition, $key) ?? [];
 	}
 
+	/**
+	 * The company that learns the visitor's IP address, as the note names it.
+	 */
 	public function company(): string
 	{
 		return $this->definition['company'];
@@ -63,11 +74,17 @@ final class Embed
 
 	// Parameters in the address and the signature.
 
+	/**
+	 * The parameters as the query string of an address, or '' without parameters.
+	 */
 	public static function encodeParams(array $params): string
 	{
 		return $params === [] ? '' : http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 	}
 
+	/**
+	 * Shoji's own address of the iframe (/shoji/frame/…, signed).
+	 */
 	public function frameUrl(): string
 	{
 		return $this->ownUrl('frame', true);
@@ -102,11 +119,17 @@ final class Embed
 		return null;
 	}
 
+	/**
+	 * True if the provider has at least one script.
+	 */
 	public function hasScript(): bool
 	{
 		return $this->assets('script') !== [];
 	}
 
+	/**
+	 * True if the provider names preview image candidates.
+	 */
 	public function hasThumbnail(): bool
 	{
 		$thumbnails = $this->definition['thumbnails'] ?? [];
@@ -136,6 +159,9 @@ final class Embed
 		return $this->kind() === 'html' ? $this->ownUrl('html', true) : null;
 	}
 
+	/**
+	 * The provider's kind: 'video', 'form', 'content' or 'html'; 'content' for anything else.
+	 */
 	public function kind(): string
 	{
 		$kind = $this->definition['kind'] ?? 'content';
@@ -170,6 +196,9 @@ final class Embed
 		return new self($kirby, $provider, $definition, $id, Providers::params($params), $title);
 	}
 
+	/**
+	 * The provider's name, as the note and the button show it.
+	 */
 	public function name(): string
 	{
 		return $this->definition['name'];
@@ -227,6 +256,9 @@ final class Embed
 		return array_map(fn (int $n) => $this->ownUrl('script', false, $n), array_keys($this->assets('script')));
 	}
 
+	/**
+	 * The signer of Shoji's own addresses for this Kirby instance.
+	 */
 	public static function signer(App $kirby): Signer
 	{
 		static $cache = null;
@@ -310,6 +342,9 @@ final class Embed
 
 	// Shoji's own addresses — the only ones that appear in the page.
 
+	/**
+	 * Shoji's own address of the preview image, or null without one.
+	 */
 	public function thumbUrl(): string|null
 	{
 		return $this->hasThumbnail() ? $this->ownUrl('thumb', true) : null;

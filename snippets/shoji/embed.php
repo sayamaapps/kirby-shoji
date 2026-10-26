@@ -59,6 +59,9 @@ if (!Options::active(kirby())) {
 
 $classes = trim('shoji shoji-' . $embed->kind() . ' shoji-' . $embed->provider . ' ' . ($class ?? ''));
 $frameTitle = $embed->title ?? $t('frame', $names);
+$frameClassAttr = esc(trim('shoji-frame ' . ($frameClass ?? '')));
+$frameSrc = esc($embed->frameUrl());
+$frameAllow = esc($embed->allow());
 // The call decides if it says true or false; otherwise the provider's switch.
 $open = is_bool($open ?? null) ? $open : $embed->open();
 $extra = [];
@@ -78,7 +81,7 @@ if ($open && $embed->kind() === 'html') : ?>
 	return; elseif ($open) : ?>
 <div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
-  <iframe class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>" src="<?= esc($embed->frameUrl()) ?>" title="<?= esc($frameTitle) ?>" allow="<?= esc($embed->allow()) ?>" allowfullscreen loading="lazy"></iframe>
+  <iframe class="<?= $frameClassAttr ?>" src="<?= $frameSrc ?>" title="<?= esc($frameTitle) ?>" allow="<?= $frameAllow ?>" allowfullscreen loading="lazy"></iframe>
 </div>
 <?php
 	return;
@@ -104,10 +107,18 @@ if ($html = $embed->htmlUrl()) {
 $data['data-shoji-script'] = implode(' ', $embed->scriptUrls());
 $data['data-shoji-style'] = implode(' ', $embed->styleUrls());
 $data['data-shoji-frame-class'] = $html ? '' : ($frameClass ?? '');
+$dataAttrs = '';
+foreach ($data as $name => $value) {
+	if ($value !== '') {
+		$dataAttrs .= ' ' . $name . '="' . esc($value) . '"';
+	}
+}
+$thumbAlt = esc($embed->title !== null ? $t('thumbAlt', ['title' => $embed->title]) : $t('thumbAltUntitled', $names));
+$sizeAttrs = $size ? ' width="' . $size[0] . '" height="' . $size[1] . '"' : '';
 ?>
-<div class="<?= esc($classes) ?>" data-shoji<?php foreach ($data as $name => $value) : if ($value !== '') : ?> <?= $name ?>="<?= esc($value) ?>"<?php endif; endforeach ?><?= $extra ? ' ' . attr($extra) : '' ?>>
+<div class="<?= esc($classes) ?>" data-shoji<?= $dataAttrs ?><?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php if ($thumb) : ?>
-  <img class="shoji-thumb" src="<?= esc($thumb) ?>" alt="<?= esc($embed->title !== null ? $t('thumbAlt', ['title' => $embed->title]) : $t('thumbAltUntitled', $names)) ?>"<?php if ($size) : ?> width="<?= $size[0] ?>" height="<?= $size[1] ?>"<?php endif ?> loading="lazy" decoding="async">
+  <img class="shoji-thumb" src="<?= esc($thumb) ?>" alt="<?= $thumbAlt ?>"<?= $sizeAttrs ?> loading="lazy" decoding="async">
   <?php endif ?>
   <a class="<?= esc(trim('shoji-button ' . ($buttonClass ?? ''))) ?>" href="<?= esc($embed->linkUrl()) ?>" rel="nofollow"><?= esc($label) ?></a>
   <?php if ($note !== false && $note !== '') : ?>

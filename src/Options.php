@@ -16,6 +16,11 @@ use WeakMap;
  *
  * Both spellings work, flat (`'shoji.active' => true`) and nested
  * (`'shoji' => ['active' => true]`), because Kirby's option() finds both.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class Options
 {

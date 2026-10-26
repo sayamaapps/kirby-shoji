@@ -2,21 +2,21 @@
 
 namespace Sayamaapps\Shoji;
 
-use Closure;
-
 /**
  * Server-side GET for preview images (and Vimeo's oEmbed answer). Uses curl
  * when available, otherwise PHP's stream wrapper. Sends no visitor data: no
  * cookies, no forwarded IP, no referrer, a fixed user agent.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class Http
 {
 	public const MAX_BYTES = 5_000_000;
 	public const TIMEOUT = 5;
 	public const USER_AGENT = 'Mozilla/5.0 (compatible; kirby-shoji/1.2; +https://github.com/sayamaapps/kirby-shoji)';
-
-	/** Tests replace the network: fn (string $url): array{0:int,1:string}. */
-	public static Closure|null $fake = null;
 
 	/** @return array{0:int,1:string} */
 	private static function curl(string $url): array
@@ -48,9 +48,6 @@ final class Http
 	/** @return array{0:int,1:string} status (0 = no answer) and body */
 	public static function get(string $url): array
 	{
-		if (self::$fake !== null) {
-			return (self::$fake)($url);
-		}
 		if (!str_starts_with($url, 'https://')) {
 			return [0, ''];
 		}

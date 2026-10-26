@@ -17,6 +17,11 @@ namespace Sayamaapps\Shoji;
  *
  * The language is set once per request (index.php, Options::language()) and
  * defaults to English. Missing keys fall back to English, then to the key.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-shoji
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 final class I18n
 {
@@ -31,6 +36,9 @@ final class I18n
 	/** @var array<string, array<string,string>> */
 	private static array $tables = [];
 
+	/**
+	 * The language of the visitor-facing text for this request.
+	 */
 	public static function language(): string
 	{
 		return self::$language;
@@ -53,6 +61,9 @@ final class I18n
 		return $translations;
 	}
 
+	/**
+	 * Sets the language of the visitor-facing text; an unknown language means English.
+	 */
 	public static function setLanguage(string $language): void
 	{
 		self::$language = in_array($language, self::LANGUAGES, true) ? $language : 'en';
