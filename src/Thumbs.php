@@ -1,6 +1,6 @@
 <?php
 
-namespace Shoji;
+namespace Sayamaapps\Shoji;
 
 /**
  * Preview images from the provider, fetched by the server and kept in

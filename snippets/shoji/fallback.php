@@ -14,8 +14,8 @@
  * @var string|null $url the pasted address
  */
 
-use Shoji\I18n;
-use Shoji\Providers;
+use Sayamaapps\Shoji\I18n;
+use Sayamaapps\Shoji\Providers;
 
 $provider = isset($url) && is_string($url) ? Providers::protectedProvider($url) : null;
 if ($provider === null) {

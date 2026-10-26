@@ -2,22 +2,18 @@
 
 use Kirby\Cms\App;
 use Kirby\Cms\Html;
+use Kirby\Filesystem\F;
 use Kirby\Http\Response;
 use Kirby\Text\KirbyTag;
 
-require_once __DIR__ . '/src/I18n.php';
-require_once __DIR__ . '/src/Options.php';
-require_once __DIR__ . '/src/Signer.php';
-require_once __DIR__ . '/src/Providers.php';
-require_once __DIR__ . '/src/Embed.php';
-require_once __DIR__ . '/src/Http.php';
-require_once __DIR__ . '/src/Thumbs.php';
+F::loadClasses(require __DIR__ . '/autoload.php', __DIR__);
+require_once __DIR__ . '/legacy.php';
 
-use Shoji\Embed;
-use Shoji\I18n;
-use Shoji\Options;
-use Shoji\Providers;
-use Shoji\Thumbs;
+use Sayamaapps\Shoji\Embed;
+use Sayamaapps\Shoji\I18n;
+use Sayamaapps\Shoji\Options;
+use Sayamaapps\Shoji\Providers;
+use Sayamaapps\Shoji\Thumbs;
 
 /**
  * Shoji (障子, the paper sliding screen: you see the outline, the outside

@@ -17,7 +17,7 @@
  * /shoji/… on this site. Without JavaScript the button is a plain link that
  * leads to the provider (kind 'html' without a `link`: to the bare markup).
  *
- * @var \Shoji\Embed|null $embed   ready-made, or:
+ * @var \Sayamaapps\Shoji\Embed|null $embed   ready-made, or:
  * @var string|null $url     a pasted address, or:
  * @var string|null $provider  with $id
  * @var string|null $id
@@ -35,8 +35,8 @@
  *                the provider's switch in `shoji.open`
  */
 
-use Shoji\I18n;
-use Shoji\Options;
+use Sayamaapps\Shoji\I18n;
+use Sayamaapps\Shoji\Options;
 
 $embed ??= isset($url) && is_string($url)
 	? shoji_embed($url, null, $params ?? [], $title ?? null)

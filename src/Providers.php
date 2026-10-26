@@ -1,6 +1,6 @@
 <?php
 
-namespace Shoji;
+namespace Sayamaapps\Shoji;
 
 use Closure;
 

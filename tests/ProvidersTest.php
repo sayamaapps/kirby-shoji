@@ -9,9 +9,9 @@
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Shoji\Providers;
-use Shoji\Signer;
-use Shoji\Thumbs;
+use Sayamaapps\Shoji\Providers;
+use Sayamaapps\Shoji\Signer;
+use Sayamaapps\Shoji\Thumbs;
 
 #[CoversClass(Providers::class)]
 final class ProvidersTest extends TestCase

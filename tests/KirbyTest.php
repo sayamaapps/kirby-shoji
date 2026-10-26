@@ -29,15 +29,15 @@ use Kirby\Http\Response;
 use Kirby\Template\Snippet;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Shoji\Http;
+use Sayamaapps\Shoji\Http;
 
-#[CoversClass(\Shoji\Embed::class)]
-#[CoversClass(\Shoji\Options::class)]
-#[CoversClass(\Shoji\Thumbs::class)]
-#[CoversClass(\Shoji\Providers::class)]
-#[CoversClass(\Shoji\I18n::class)]
-#[CoversClass(\Shoji\Signer::class)]
-#[CoversClass(\Shoji\Http::class)]
+#[CoversClass(\Sayamaapps\Shoji\Embed::class)]
+#[CoversClass(\Sayamaapps\Shoji\Options::class)]
+#[CoversClass(\Sayamaapps\Shoji\Thumbs::class)]
+#[CoversClass(\Sayamaapps\Shoji\Providers::class)]
+#[CoversClass(\Sayamaapps\Shoji\I18n::class)]
+#[CoversClass(\Sayamaapps\Shoji\Signer::class)]
+#[CoversClass(\Sayamaapps\Shoji\Http::class)]
 final class KirbyTest extends TestCase
 {
 	private const FOREIGN = '~(?:youtube(?:-nocookie)?\.com|youtu\.be|ytimg\.com|googlevideo\.com|vimeo\.com|vimeocdn\.com|digistore24(?:-scripts)?\.com|sibforms\.com|brevo\.com)~i';
@@ -194,7 +194,7 @@ final class KirbyTest extends TestCase
 			expect(404, $call('/shoji/frame/nope/dQw4w9WgXcQ?s=0000000000000000', $on)->code(), 'unknown provider refused');
 
 			// shoji.url: the site changes the provider address at click time.
-			$hooked = $on + ['shoji.url' => fn (string $url, \Shoji\Embed $embed, string $kind) => $embed->provider === 'digistore' && $kind === 'frame' ? $url . '&cam=fromhook' : $url];
+			$hooked = $on + ['shoji.url' => fn (string $url, \Sayamaapps\Shoji\Embed $embed, string $kind) => $embed->provider === 'digistore' && $kind === 'frame' ? $url . '&cam=fromhook' : $url];
 			expect('https://www.digistore24.com/product/123456/78901?aff=partner&cam=fromhook', $call($ds, $hooked)->header('Location'), 'shoji.url hook');
 			$bad = $on + ['shoji.url' => fn () => 'javascript:alert(1)'];
 			expect(404, $call($ds, $bad)->code(), 'hook returning a non-https address is refused');
@@ -264,8 +264,8 @@ final class KirbyTest extends TestCase
 
 			// A corrected Vimeo hash is fetched at once: the miss of the old hash does not hold back the new address.
 			$hashKirby = $app($on);
-			$wrongHash = \Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'wronghash1']);
-			$rightHash = \Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'abcdef1234']);
+			$wrongHash = \Sayamaapps\Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'wronghash1']);
+			$rightHash = \Sayamaapps\Shoji\Embed::make($hashKirby, 'vimeo', '76979871', ['h' => 'abcdef1234']);
 			$hashAsked = [];
 			Http::$fake = function (string $url) use (&$hashAsked, $jpeg): array {
 				$hashAsked[] = $url;
@@ -274,7 +274,7 @@ final class KirbyTest extends TestCase
 				}
 				return str_contains($url, 'i.vimeocdn.com') ? [200, $jpeg] : [404, ''];
 			};
-			$hashThumbs = new \Shoji\Thumbs($tmp . '/hash-thumbs');
+			$hashThumbs = new \Sayamaapps\Shoji\Thumbs($tmp . '/hash-thumbs');
 			holds($hashThumbs->get($wrongHash) === null, 'wrong hash: no preview image');
 			holds(is_file($tmp . '/hash-thumbs/vimeo/76979871.miss'), 'wrong hash: miss remembered');
 			$hashAsked = [];
@@ -360,7 +360,7 @@ final class KirbyTest extends TestCase
 			expect(404, $call(str_replace('/html/', '/frame/', $markupUrl), $html)->code(), 'html: signature bound to the kind, no frame for kind html');
 			expect(404, $call(str_replace('/html/', '/go/', $markupUrl), $html)->code(), 'html: no go redirect without a link');
 			$kirby = $app($html);
-			$forged = '/shoji/html/youtube/dQw4w9WgXcQ?s=' . \Shoji\Embed::signer($kirby)->sign('html', 'youtube', 'dQw4w9WgXcQ', '');
+			$forged = '/shoji/html/youtube/dQw4w9WgXcQ?s=' . \Sayamaapps\Shoji\Embed::signer($kirby)->sign('html', 'youtube', 'dQw4w9WgXcQ', '');
 			expect(404, $call($forged, $html)->code(), 'html route serves only kind html, even when signed');
 			$missing = current(array_filter($attrs($page, 'data-shoji-html'), fn ($u) => str_contains($u, '/missing?')));
 			$logged = ini_set('error_log', '/dev/null');
@@ -376,9 +376,9 @@ final class KirbyTest extends TestCase
 			expect(404, $call(str_replace('?s=', '?n=1&s=', $scriptList[0]), $html)->code(), 'index not covered by the signature refused');
 			expect(404, $call(str_replace('n=1&', 'n=1%0A&', $scriptList[1]), $html)->code(), 'index with a line break refused');
 			expect(404, $call(str_replace('/script/', '/style/', $scriptList[0]), $html)->code(), 'script signature is no stylesheet signature');
-			$third = '/shoji/script/brevo/newsletter?n=2&s=' . \Shoji\Embed::signer($kirby)->sign('script', 'brevo', 'newsletter', 'n=2');
+			$third = '/shoji/script/brevo/newsletter?n=2&s=' . \Sayamaapps\Shoji\Embed::signer($kirby)->sign('script', 'brevo', 'newsletter', 'n=2');
 			expect(404, $call($third, $html)->code(), 'no third script');
-			$styleOfVideo = '/shoji/style/youtube/dQw4w9WgXcQ?s=' . \Shoji\Embed::signer($kirby)->sign('style', 'youtube', 'dQw4w9WgXcQ', '');
+			$styleOfVideo = '/shoji/style/youtube/dQw4w9WgXcQ?s=' . \Sayamaapps\Shoji\Embed::signer($kirby)->sign('style', 'youtube', 'dQw4w9WgXcQ', '');
 			expect(404, $call($styleOfVideo, $on + ['shoji.providers' => ['youtube' => ['style' => 'https://www.youtube.com/x.css']]])->code(), 'stylesheets only for kind html');
 
 			// Without JavaScript: the bare markup, or the provider's link if there is one.

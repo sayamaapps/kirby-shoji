@@ -1,6 +1,6 @@
 <?php
 
-namespace Shoji;
+namespace Sayamaapps\Shoji;
 
 /**
  * Visitor-facing strings, Kirby-free.

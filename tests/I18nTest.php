@@ -8,7 +8,7 @@
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Shoji\I18n;
+use Sayamaapps\Shoji\I18n;
 
 #[CoversClass(I18n::class)]
 final class I18nTest extends TestCase
