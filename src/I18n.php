@@ -20,66 +20,66 @@ namespace Shoji;
  */
 final class I18n
 {
-    /** Languages Shoji ships. English is the default and the fallback. */
-    public const LANGUAGES = ['en', 'de'];
+	/** Languages Shoji ships. English is the default and the fallback. */
+	public const LANGUAGES = ['en', 'de'];
 
-    private static string $language = 'en';
+	private static string $language = 'en';
 
-    /** @var array<string, array<string,string>> */
-    private static array $tables = [];
+	/** @var array<string,string> */
+	private static array $overrides = [];
 
-    /** @var array<string,string> */
-    private static array $overrides = [];
+	/** @var array<string, array<string,string>> */
+	private static array $tables = [];
 
-    public static function setLanguage(string $language): void
-    {
-        self::$language = in_array($language, self::LANGUAGES, true) ? $language : 'en';
-    }
+	public static function language(): string
+	{
+		return self::$language;
+	}
 
-    public static function language(): string
-    {
-        return self::$language;
-    }
+	public static function setLanguage(string $language): void
+	{
+		self::$language = in_array($language, self::LANGUAGES, true) ? $language : 'en';
+	}
 
-    /** Strings from `shoji.texts` for the current language; flat keys apply to every language. */
-    public static function setOverrides(mixed $texts): void
-    {
-        self::$overrides = [];
-        if (!is_array($texts)) {
-            return;
-        }
-        // Flat keys first (language tables are arrays and skipped), then the
-        // current language's table, which wins.
-        $perLanguage = is_array($texts[self::$language] ?? null) ? $texts[self::$language] : [];
-        foreach ([$texts, $perLanguage] as $table) {
-            foreach ($table as $key => $text) {
-                if (is_string($key) && is_string($text)) {
-                    self::$overrides[$key] = $text;
-                }
-            }
-        }
-    }
+	/** Strings from `shoji.texts` for the current language; flat keys apply to every language. */
+	public static function setOverrides(mixed $texts): void
+	{
+		self::$overrides = [];
+		if (!is_array($texts)) {
+			return;
+		}
+		// Flat keys first (language tables are arrays and skipped), then the
+		// current language's table, which wins.
+		$perLanguage = is_array($texts[self::$language] ?? null) ? $texts[self::$language] : [];
+		foreach ([$texts, $perLanguage] as $table) {
+			foreach ($table as $key => $text) {
+				if (is_string($key) && is_string($text)) {
+					self::$overrides[$key] = $text;
+				}
+			}
+		}
+	}
 
-    /** @return array<string,string> */
-    public static function table(string $language): array
-    {
-        if (!in_array($language, self::LANGUAGES, true)) {
-            return [];
-        }
-        return self::$tables[$language] ??= require dirname(__DIR__) . '/translations/' . $language . '.php';
-    }
+	/** `{name}` placeholders are replaced with the given values, unescaped. */
+	public static function t(string $key, array $values = []): string
+	{
+		$text = self::$overrides[$key] ?? self::table(self::$language)[$key] ?? self::table('en')[$key] ?? $key;
+		if ($values === []) {
+			return $text;
+		}
+		$pairs = [];
+		foreach ($values as $name => $value) {
+			$pairs['{' . $name . '}'] = (string)$value;
+		}
+		return strtr($text, $pairs);
+	}
 
-    /** `{name}` placeholders are replaced with the given values, unescaped. */
-    public static function t(string $key, array $values = []): string
-    {
-        $text = self::$overrides[$key] ?? self::table(self::$language)[$key] ?? self::table('en')[$key] ?? $key;
-        if ($values === []) {
-            return $text;
-        }
-        $pairs = [];
-        foreach ($values as $name => $value) {
-            $pairs['{' . $name . '}'] = (string) $value;
-        }
-        return strtr($text, $pairs);
-    }
+	/** @return array<string,string> */
+	public static function table(string $language): array
+	{
+		if (!in_array($language, self::LANGUAGES, true)) {
+			return [];
+		}
+		return self::$tables[$language] ??= require dirname(__DIR__) . '/translations/' . $language . '.php';
+	}
 }

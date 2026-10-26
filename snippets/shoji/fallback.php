@@ -19,7 +19,7 @@ use Shoji\Providers;
 
 $provider = isset($url) && is_string($url) ? Providers::protectedProvider($url) : null;
 if ($provider === null) {
-    return;
+	return;
 }
 shoji_i18n();
 $names = ['name' => Providers::PROTECTED[$provider]['name']];

@@ -20,7 +20,7 @@ function holds(bool $ok, string $what): void
 }
 
 /** Id the provider's `match` finds in $url, or null. */
-function idIn(array $definition, string $url): ?string
+function idIn(array $definition, string $url): string|null
 {
 	return preg_match($definition['match'], $url, $m) ? $m[1] : null;
 }

@@ -15,8 +15,8 @@ $kirby = $block->kirby();
 $content = $block->location()->value() !== 'kirby' ? shoji_video($kirby, $block->url()->value()) : null;
 
 if ($content === null) {
-    include $kirby->root('kirby') . '/config/blocks/video/video.php';
-    return;
+	include $kirby->root('kirby') . '/config/blocks/video/video.php';
+	return;
 }
 $caption = $block->caption();
 ?>

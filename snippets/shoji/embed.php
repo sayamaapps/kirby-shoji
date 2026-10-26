@@ -18,31 +18,31 @@
  * leads to the provider (kind 'html' without a `link`: to the bare markup).
  *
  * @var \Shoji\Embed|null $embed   ready-made, or:
- * @var string|null       $url     a pasted address, or:
- * @var string|null       $provider  with $id
- * @var string|null       $id
- * @var array|null        $params  extra parameters for the provider address (signed)
- * @var string|null       $title   video title: alt text, button, iframe title
- * @var string|null       $label   button text instead of the default
+ * @var string|null $url     a pasted address, or:
+ * @var string|null $provider  with $id
+ * @var string|null $id
+ * @var array|null $params  extra parameters for the provider address (signed)
+ * @var string|null $title   video title: alt text, button, iframe title
+ * @var string|null $label   button text instead of the default
  * @var string|false|null $note    note text instead of the default; false = none
- * @var string|null       $class   extra classes on the container
- * @var string|null       $buttonClass extra classes on the button
- * @var string|null       $frameClass extra classes on the iframe
- * @var array|null        $attrs   extra container attributes (data-*, aria-*, id only)
- * @var bool|null         $open    true: the content right away, without placeholder
- *                                 (for a site that remembers consent itself);
- *                                 false: placeholder; not given (or no bool):
- *                                 the provider's switch in `shoji.open`
+ * @var string|null $class   extra classes on the container
+ * @var string|null $buttonClass extra classes on the button
+ * @var string|null $frameClass extra classes on the iframe
+ * @var array|null $attrs   extra container attributes (data-*, aria-*, id only)
+ * @var bool|null $open    true: the content right away, without placeholder
+ *                (for a site that remembers consent itself);
+ *                false: placeholder; not given (or no bool):
+ *                the provider's switch in `shoji.open`
  */
 
 use Shoji\I18n;
 use Shoji\Options;
 
 $embed ??= isset($url) && is_string($url)
-    ? shoji_embed($url, null, $params ?? [], $title ?? null)
-    : (isset($provider, $id) ? shoji_embed((string) $provider, (string) $id, $params ?? [], $title ?? null) : null);
+	? shoji_embed($url, null, $params ?? [], $title ?? null)
+	: (isset($provider, $id) ? shoji_embed((string)$provider, (string)$id, $params ?? [], $title ?? null) : null);
 if ($embed === null) {
-    return;
+	return;
 }
 shoji_i18n();
 $t = fn (string $key, array $values = []) => I18n::t($key, $values);
@@ -50,10 +50,10 @@ $names = ['name' => $embed->name(), 'company' => $embed->company()];
 
 // Switched off: a plain link to the provider. Loads nothing, breaks nothing.
 if (!Options::active(kirby())) {
-    if ($target = $embed->target('go')) : ?>
+	if ($target = $embed->target('go')) : ?>
 <a class="shoji-link" href="<?= esc($target) ?>" rel="noopener"><?= esc($embed->title ?? $t('open', $names)) ?></a>
     <?php endif;
-    return;
+	return;
 }
 
 $classes = trim('shoji shoji-' . $embed->kind() . ' shoji-' . $embed->provider . ' ' . ($class ?? ''));
@@ -62,9 +62,9 @@ $frameTitle = $embed->title ?? $t('frame', $names);
 $open = is_bool($open ?? null) ? $open : $embed->open();
 $extra = [];
 foreach (is_array($attrs ?? null) ? $attrs : [] as $name => $value) {
-    if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
-        $extra[$name] = (string) $value;
-    }
+	if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
+		$extra[$name] = (string)$value;
+	}
 }
 
 if ($open && $embed->kind() === 'html') : ?>
@@ -74,20 +74,19 @@ if ($open && $embed->kind() === 'html') : ?>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
 </div>
 <?php
-    return;
-elseif ($open) : ?>
+	return; elseif ($open) : ?>
 <div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
   <iframe class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>" src="<?= esc($embed->frameUrl()) ?>" title="<?= esc($frameTitle) ?>" allow="<?= esc($embed->allow()) ?>" allowfullscreen loading="lazy"></iframe>
 </div>
 <?php
-    return;
+	return;
 endif;
 
 $label ??= match ($embed->kind()) {
-    'video' => $embed->title !== null ? $t('button.videoTitle', ['title' => $embed->title]) : $t('button.video'),
-    'form', 'html' => $t('button.form'),
-    default => $t('button.content'),
+	'video' => $embed->title !== null ? $t('button.videoTitle', ['title' => $embed->title]) : $t('button.video'),
+	'form', 'html' => $t('button.form'),
+	default => $t('button.content'),
 };
 $note ??= $t('note.' . $embed->kind(), $names);
 $privacy = $note !== false ? Options::privacyUrl(kirby()) : null;
@@ -97,9 +96,9 @@ $size = $embed->size();
 // or stylesheets: own addresses separated by a space, loaded in this order.
 $data = ['data-shoji-provider' => $embed->provider];
 if ($html = $embed->htmlUrl()) {
-    $data['data-shoji-html'] = $html;
+	$data['data-shoji-html'] = $html;
 } else {
-    $data += ['data-shoji-frame' => $embed->frameUrl(), 'data-shoji-title' => $frameTitle, 'data-shoji-allow' => $embed->allow()];
+	$data += ['data-shoji-frame' => $embed->frameUrl(), 'data-shoji-title' => $frameTitle, 'data-shoji-allow' => $embed->allow()];
 }
 $data['data-shoji-script'] = implode(' ', $embed->scriptUrls());
 $data['data-shoji-style'] = implode(' ', $embed->styleUrls());

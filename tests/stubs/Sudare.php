@@ -10,10 +10,10 @@ namespace Sudare;
 
 final class Sudare
 {
-    public static bool $active = false;
+	public static bool $active = false;
 
-    public static function active(): bool
-    {
-        return self::$active;
-    }
+	public static function active(): bool
+	{
+		return self::$active;
+	}
 }
