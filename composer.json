@@ -3,7 +3,20 @@
     "description": "Kirby CMS plugin: YouTube, Vimeo, Digistore24 and forms load only after the visitor clicks.",
     "type": "kirby-plugin",
     "license": "MIT",
-    "keywords": ["kirby", "kirby-plugin", "kirby-5", "privacy", "gdpr", "youtube", "vimeo", "click-to-load", "embed", "facade", "brevo", "forms"],
+    "keywords": [
+        "kirby",
+        "kirby-plugin",
+        "kirby-5",
+        "privacy",
+        "gdpr",
+        "youtube",
+        "vimeo",
+        "click-to-load",
+        "embed",
+        "facade",
+        "brevo",
+        "forms"
+    ],
     "homepage": "https://github.com/sayamaapps/kirby-shoji",
     "authors": [
         {
@@ -20,10 +33,11 @@
         "getkirby/composer-installer": "^1.2"
     },
     "require-dev": {
-        "getkirby/cms": "^5.0"
+        "getkirby/cms": "^5.0",
+        "phpunit/phpunit": "11.5.55"
     },
     "scripts": {
-        "test": "sh tests/run.sh"
+        "test": "vendor/bin/phpunit"
     },
     "config": {
         "optimize-autoloader": true,

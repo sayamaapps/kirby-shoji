@@ -1,39 +1,29 @@
 <?php
+
 /**
  * Providers without Kirby: recognising addresses, valid ids, the address
  * templates, parameter cleaning, `shoji.providers` merging, the allow
  * attribute, the signature, image type sniffing.
  *   php tests/ProvidersTest.php
  */
-require_once __DIR__ . '/../src/Providers.php';
-require_once __DIR__ . '/../src/Signer.php';
-require_once __DIR__ . '/../src/Thumbs.php';
 
 use Shoji\Providers;
 use Shoji\Signer;
 use Shoji\Thumbs;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
 
-ini_set('error_log', '/dev/null'); // the refused definitions below are logged on purpose
-$checks = 0;
-function expect($expected, $actual, string $what): void
+#[CoversClass(Providers::class)]
+final class ProvidersTest extends TestCase
 {
-    global $checks;
-    if ($expected !== $actual) { throw new RuntimeException($what . ': ' . var_export($actual, true)); }
-    $checks++;
-}
-function holds(bool $ok, string $what): void
-{
-    global $checks;
-    if (!$ok) { throw new RuntimeException($what); }
-    $checks++;
-}
-/** Id the provider's `match` finds in $url, or null. */
-function idIn(array $definition, string $url): ?string
-{
-    return preg_match($definition['match'], $url, $m) ? $m[1] : null;
-}
+    public function testSuite(): void
+    {
 
-try {
+
+    ini_set('error_log', '/dev/null'); // the refused definitions below are logged on purpose
+    /** Id the provider's `match` finds in $url, or null. */
+
+
     $p = Providers::all();
     expect(['youtube', 'youtube-playlist', 'vimeo', 'digistore'], array_keys($p), 'built-in providers');
     foreach ($p as $name => $definition) {
@@ -255,9 +245,5 @@ try {
     expect('png', Thumbs::sniff("\x89PNG\r\n\x1A\nrest"), 'PNG');
     expect('webp', Thumbs::sniff('RIFF1234WEBPVP8 '), 'WebP');
     expect(null, Thumbs::sniff('<svg onload="alert(1)">'), 'SVG/HTML refused');
-
-    echo "ProvidersTest: $checks checks passed\n";
-} catch (Throwable $e) {
-    fwrite(STDERR, 'ProvidersTest FAILED: ' . $e->getMessage() . "\n");
-    exit(1);
+    }
 }

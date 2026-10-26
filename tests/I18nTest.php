@@ -1,28 +1,30 @@
 <?php
+
 /**
  * Translations: every language has the same keys and placeholders as
  * English; `shoji.texts` replaces single strings, per language or for all.
  *   php tests/I18nTest.php
  */
-require_once __DIR__ . '/../src/I18n.php';
 
 use Shoji\I18n;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
 
-$checks = 0;
-function expect($expected, $actual, string $what): void
+#[CoversClass(I18n::class)]
+final class I18nTest extends TestCase
 {
-    global $checks;
-    if ($expected !== $actual) { throw new RuntimeException($what . ': ' . var_export($actual, true)); }
-    $checks++;
-}
-$placeholders = function (string $text): array {
-    preg_match_all('/\{(\w+)\}/', $text, $m);
-    $names = array_unique($m[1]);
-    sort($names);
-    return $names;
-};
+    public function testSuite(): void
+    {
 
-try {
+
+    $placeholders = function (string $text): array {
+        preg_match_all('/\{(\w+)\}/', $text, $m);
+        $names = array_unique($m[1]);
+        sort($names);
+        return $names;
+    };
+
+
     $en = I18n::table('en');
     expect(true, count($en) >= 10, 'English table loaded');
     foreach (I18n::LANGUAGES as $language) {
@@ -54,9 +56,5 @@ try {
     expect('Privacy policy', I18n::t('privacy'), 'no overrides: the shipped text');
     I18n::setOverrides(['privacy' => ['not a string']]);
     expect('Privacy policy', I18n::t('privacy'), 'non-string override ignored');
-
-    echo "I18nTest: $checks checks passed\n";
-} catch (Throwable $e) {
-    fwrite(STDERR, 'I18nTest FAILED: ' . $e->getMessage() . "\n");
-    exit(1);
+    }
 }
