@@ -36,6 +36,8 @@ composer analyze:platform         # platform requirements
 composer normalize:check          # composer.json layout
 ```
 
+Style-only commits are listed in `.github/.git-blame-ignore-revs`. To skip them in `git blame`, run `git config blame.ignoreRevsFile .github/.git-blame-ignore-revs` once in the clone.
+
 Duplicated code is checked with phpcpd, installed globally (its Symfony Console dependency conflicts with the other tools). CI runs it as `phpcpd --fuzzy --exclude tests --exclude vendor .`.
 
 Code style is checked with PHP-CS-Fixer and the Kirby rule set (`getkirby/php-cs`). The package is installed globally, because it needs PHP 8.3 or newer and this package supports PHP 8.2:
