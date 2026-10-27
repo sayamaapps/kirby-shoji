@@ -4,12 +4,10 @@ use Kirby\Cms\App;
 use Kirby\Filesystem\Dir;
 use Kirby\Template\Snippet;
 use PHPUnit\Framework\TestCase;
-use Sayamaapps\Shoji\Http;
 
 /**
  * Base of the test classes that boot Kirby. Every site directory a test makes
- * is removed, the Kirby app destroyed and the Http test hook reset in
- * tearDown, also when a test fails.
+ * is removed and the Kirby app destroyed in tearDown, also when a test fails.
  */
 abstract class ShojiTestCase extends TestCase
 {
@@ -45,7 +43,6 @@ abstract class ShojiTestCase extends TestCase
 	protected function tearDown(): void
 	{
 		App::destroy();
-		Http::$fake = null;
 		foreach ($this->directories as $directory) {
 			Dir::remove($directory);
 		}

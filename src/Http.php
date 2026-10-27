@@ -19,9 +19,6 @@ class Http
 	public const TIMEOUT = 5;
 	public const USER_AGENT = 'Mozilla/5.0 (compatible; kirby-shoji/1.2; +https://github.com/sayamaapps/kirby-shoji)';
 
-	/** Test hook kept from 1.x: while set, every request is answered by this fn (string $url): array{0:int,1:string}. */
-	public static \Closure|null $fake = null;
-
 	/** @return array{0:int,1:string} */
 	private static function curl(string $url): array
 	{
@@ -52,9 +49,6 @@ class Http
 	/** @return array{0:int,1:string} status (0 = no answer) and body */
 	public static function get(string $url): array
 	{
-		if (self::$fake !== null) {
-			return (self::$fake)($url);
-		}
 		if (!str_starts_with($url, 'https://')) {
 			return [0, ''];
 		}

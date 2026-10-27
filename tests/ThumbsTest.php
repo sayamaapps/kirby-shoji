@@ -2,7 +2,6 @@
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use Sayamaapps\Shoji\Embed;
-use Sayamaapps\Shoji\Http;
 use Sayamaapps\Shoji\Thumbs;
 
 /**
@@ -55,20 +54,5 @@ final class ThumbsTest extends ShojiTestCase
 		$asked = [];
 		$thumbs->get($embed);
 		$this->assertSame([], $asked, 'the second request is served from the cache');
-	}
-
-	public function testWithoutAFetcherTheHttpHookAnswers(): void
-	{
-		$jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 2000);
-		$asked = [];
-		[$kirby, $tmp] = $this->site();
-		Http::$fake = function (string $url) use (&$asked, $jpeg): array {
-			$asked[] = $url;
-			return [200, $jpeg];
-		};
-		// The one-argument form (the 1.x constructor) fetches through Http::get().
-		$image = (new Thumbs($tmp . '/thumbs'))->get(Embed::make($kirby, 'youtube', 'dQw4w9WgXcQ'));
-		$this->assertSame('image/jpeg', $image['type'] ?? null, 'the JPEG is taken');
-		$this->assertNotSame([], $asked, 'the hook answered the fetch');
 	}
 }

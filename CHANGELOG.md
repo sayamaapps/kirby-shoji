@@ -13,6 +13,11 @@ All notable changes to this project are documented here. Versions follow
 
 ## [Unreleased]
 
+### Removed
+
+- The 1.x test hook `Http::$fake` is removed (breaking, test code only). Tests pass
+  their preview image fetcher to `Thumbs` instead.
+
 ### Changed
 
 - Options are read as `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>`
@@ -23,7 +28,7 @@ All notable changes to this project are documented here. Versions follow
   deprecated wrappers around `Sayamaapps\Shoji\Api`. Their names keep working.
 - The classes live in the `Sayamaapps\Shoji` namespace; the 1.x names are aliases.
 - `Thumbs` takes its preview image fetcher as an optional second argument;
-  `new Thumbs($directory)` still works. The 1.x test hook `Http::$fake` is kept.
+  `new Thumbs($directory)` still works.
 - The classes are no longer `final`, so a site can extend them.
 - The privacy texts are in `docs/`. Installed packages do not include the tests,
   CI, the analysis configuration or the repository documents.
