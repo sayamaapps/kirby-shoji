@@ -17,10 +17,14 @@ All notable changes to this project are documented here. Versions follow
 
 - Options are read as `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>`
   still works as a fallback and is reported as a deprecation in debug mode.
+- The constant `Options::PREFIX` is `sayamaapps.shoji.` (1.x: `shoji.`). The
+  `Options::LEGACY_PREFIX` constant holds the 1.x spelling.
 - The helper functions (`shoji_embed()`, `shoji_video()` and the others) are
   deprecated wrappers around `Sayamaapps\Shoji\Api`. Their names keep working.
 - The classes live in the `Sayamaapps\Shoji` namespace; the 1.x names are aliases.
-- The preview image fetcher is passed to `Thumbs` instead of a static test hook.
+- `Thumbs` takes its preview image fetcher as an optional second argument;
+  `new Thumbs($directory)` still works. The 1.x test hook `Http::$fake` is kept.
+- The classes are no longer `final`, so a site can extend them.
 - The privacy texts are in `docs/`. Installed packages do not include the tests,
   CI, the analysis configuration or the repository documents.
 
