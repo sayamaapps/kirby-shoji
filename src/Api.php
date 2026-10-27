@@ -63,6 +63,37 @@ class Api
 	}
 
 	/**
+	 * The embed the placeholder snippet shows: for a pasted address, or for a
+	 * provider and id; null if there is neither or nothing matches.
+	 */
+	public static function embedFor(App $kirby, mixed $url, mixed $provider, mixed $id, array $params, string|null $title): Embed|null
+	{
+		if (is_string($url)) {
+			return self::embed($kirby, $url, null, $params, $title);
+		}
+		if ($provider === null || $id === null) {
+			return null;
+		}
+		return self::embed($kirby, (string)$provider, (string)$id, $params, $title);
+	}
+
+	/**
+	 * The extra container attributes of a snippet call: data-*, aria-* and id only.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function attributes(mixed $attrs): array
+	{
+		$extra = [];
+		foreach (is_array($attrs) ? $attrs : [] as $name => $value) {
+			if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
+				$extra[$name] = (string)$value;
+			}
+		}
+		return $extra;
+	}
+
+	/**
 	 * Sets the language and the `sayamaapps.shoji.texts` overrides for this request.
 	 * Snippets call it before they print any text.
 	 */
