@@ -28,6 +28,7 @@ use Kirby\Cms\Html;
 use Kirby\Filesystem\Dir;
 use Kirby\Http\Response;
 use Kirby\Template\Snippet;
+use Sayamaapps\Shoji\Options;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 #[CoversClass(\Sayamaapps\Shoji\Embed::class)]
@@ -132,6 +133,7 @@ final class KirbyTest extends ShojiTestCase
 
 		// 2. On: the page names no provider host.
 		$on = ['shoji.active' => true];
+		expect(true, Options::active($app(['sayamaapps' => ['shoji' => ['active' => true]]])), 'nested sayamaapps.shoji config is read');
 		$html = $render($on);
 		holds(preg_match(self::FOREIGN, $html, $hit) === 0, 'on: no provider host in the page before the click, found ' . ($hit[0] ?? ''));
 		expect(6, substr_count($html, ' data-shoji '), 'six placeholders: 3 snippets, 2 tags, 1 block (the invalid id prints nothing)');
