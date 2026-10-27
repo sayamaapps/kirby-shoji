@@ -12,7 +12,7 @@ namespace Sayamaapps\Shoji;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Http
+class Http
 {
 	public const MAX_BYTES = 5_000_000;
 	public const TIMEOUT = 5;

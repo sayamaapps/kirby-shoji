@@ -20,7 +20,7 @@ use Closure;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Thumbs
+class Thumbs
 {
 	public const MAX_AGE = 86400 * 30;
 

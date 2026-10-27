@@ -23,7 +23,7 @@ namespace Sayamaapps\Shoji;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class I18n
+class I18n
 {
 	/** Languages Shoji ships. English is the default and the fallback. */
 	public const LANGUAGES = ['en', 'de'];

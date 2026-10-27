@@ -15,7 +15,7 @@ use Kirby\Exception\Exception;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Signer
+class Signer
 {
 	/** 16 hex characters = 64 bits. Plenty for "did this site render the address". */
 	public const LENGTH = 16;

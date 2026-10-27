@@ -59,7 +59,7 @@ use Closure;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Providers
+class Providers
 {
 	/** At most this many scripts and stylesheets per provider (the index travels in the address). */
 	public const ASSETS_MAX = 10;

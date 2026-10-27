@@ -18,7 +18,7 @@ use WeakMap;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Api
+class Api
 {
 	/** Kirby's own tag definitions, read once from the core. */
 	private static array|null $coreTags = null;

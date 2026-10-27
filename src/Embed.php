@@ -19,7 +19,7 @@ use WeakMap;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Embed
+class Embed
 {
 	/**
 	 * @param array<string,string> $params already cleaned (Providers::params)
