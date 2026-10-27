@@ -68,7 +68,7 @@ class Signer
 			return trim((string)Quiet::run(fn () => file_get_contents($file))) ?: $secret;
 		}
 		Quiet::run(fn () => unlink($file . '.tmp'));
-		error_log('Shoji: cannot write ' . $file . ' — placeholders will not open until shoji.secret is set or the storage directory is writable.');
+		error_log('Shoji: cannot write ' . $file . ' — placeholders will not open until sayamaapps.shoji.secret is set or the storage directory is writable.');
 		return $secret;
 	}
 

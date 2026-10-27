@@ -63,7 +63,7 @@ class Api
 	}
 
 	/**
-	 * Sets the language and the `shoji.texts` overrides for this request.
+	 * Sets the language and the `sayamaapps.shoji.texts` overrides for this request.
 	 * Snippets call it before they print any text.
 	 */
 	public static function i18n(App $kirby): void
@@ -171,7 +171,7 @@ class Api
 	/**
 	 * The <script> tag for shoji.js, once per page: the first placeholder prints
 	 * it, later ones print nothing. External and deferred, so a Content Security
-	 * Policy needs no 'unsafe-inline'. `shoji.script` set to false turns it off
+	 * Policy needs no 'unsafe-inline'. `sayamaapps.shoji.script` set to false turns it off
 	 * for sites that bundle the file themselves.
 	 */
 	public static function scriptTag(App $kirby): string

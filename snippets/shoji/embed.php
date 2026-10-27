@@ -32,7 +32,7 @@
  * @var bool|null $open    true: the content right away, without placeholder
  *                (for a site that remembers consent itself);
  *                false: placeholder; not given (or no bool):
- *                the provider's switch in `shoji.open`
+ *                the provider's switch in `sayamaapps.shoji.open`
  */
 
 use Sayamaapps\Shoji\Api;

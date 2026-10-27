@@ -12,10 +12,11 @@ use WeakMap;
  * Reads `sayamaapps.shoji.*` options, with the 1.x names `shoji.*` as fallback.
  *
  * `null` counts as "not set", like Kirby's own option() (A::get() checks
- * isset() as well), so `'shoji.privacy' => null` falls back to the default.
+ * isset() as well), so `'sayamaapps.shoji.privacy' => null` falls back to the default.
  *
- * Both spellings work, flat (`'shoji.active' => true`) and nested
- * (`'shoji' => ['active' => true]`), because Kirby's option() finds both.
+ * Both spellings work, flat (`'sayamaapps.shoji.active' => true`) and nested
+ * (`'sayamaapps' => ['shoji' => ['active' => true]]`), because Kirby's option()
+ * finds both. The 1.x keys (`'shoji.active' => true`) are the fallback.
  *
  * @package   Kirby Shoji
  * @author    Simon Räder
@@ -31,7 +32,7 @@ class Options
 	/** Option prefix of 1.x (`shoji.<key>`), read as a fallback until the next major version. */
 	public const PREFIX = 'shoji.';
 
-	/** Pages tried, in this order, for the privacy link when `shoji.privacy` is not set. */
+	/** Pages tried, in this order, for the privacy link when `sayamaapps.shoji.privacy` is not set. */
 	public const PRIVACY_PAGES = ['datenschutz', 'datenschutzerklaerung', 'privacy', 'privacy-policy'];
 
 	/** Master switch. Only `true` switches on. */
@@ -69,7 +70,7 @@ class Options
 	}
 
 	/**
-	 * Language of the visitor-facing text: `shoji.language`, otherwise the
+	 * Language of the visitor-facing text: `sayamaapps.shoji.language`, otherwise the
 	 * language of the current request (multi-language sites), the default
 	 * language, the first two letters of Kirby's `locale` option, English.
 	 * Only languages Shoji ships (I18n::LANGUAGES) are returned.
@@ -98,7 +99,7 @@ class Options
 	}
 
 	/**
-	 * `shoji.open`, checked (Providers::open): provider name => true for
+	 * `sayamaapps.shoji.open`, checked (Providers::open): provider name => true for
 	 * content that loads with the page, false or missing for content behind
 	 * the click. Read once per Kirby instance, so a typo is logged once.
 	 *
@@ -113,7 +114,7 @@ class Options
 
 	/**
 	 * Whether a page loads this provider's content right away: Shoji is on
-	 * and `shoji.open` switches the provider on. A single call's `open`
+	 * and `sayamaapps.shoji.open` switches the provider on. A single call's `open`
 	 * can still differ. Behind `$site->shojiOpen()`.
 	 */
 	public static function opens(App $kirby, string $provider): bool
@@ -123,7 +124,7 @@ class Options
 
 	/**
 	 * Address of the privacy policy for the link in the note, or null (no
-	 * link). `shoji.privacy` may be a URL, a page id or a closure returning
+	 * link). `sayamaapps.shoji.privacy` may be a URL, a page id or a closure returning
 	 * either; `false` switches the link off. Without the option the first
 	 * existing page of PRIVACY_PAGES is used.
 	 */
@@ -152,7 +153,7 @@ class Options
 	}
 
 	/**
-	 * The secret that signs Shoji's own addresses. `shoji.secret` (for
+	 * The secret that signs Shoji's own addresses. `sayamaapps.shoji.secret` (for
 	 * several servers behind one domain), otherwise a random value created
 	 * once in storage/shoji/secret.
 	 */

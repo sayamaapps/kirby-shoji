@@ -12,7 +12,7 @@ use WeakMap;
  * this site) and, for the routes, the provider's addresses.
  *
  * The default snippet uses it; a site with its own markup gets one from
- * shoji_embed() and builds the placeholder from these methods.
+ * Api::embed() and builds the placeholder from these methods.
  *
  * @package   Kirby Shoji
  * @author    Simon Räder
@@ -206,7 +206,7 @@ class Embed
 	}
 
 	/**
-	 * The provider's switch in `shoji.open`: true if its content loads with
+	 * The provider's switch in `sayamaapps.shoji.open`: true if its content loads with
 	 * the page instead of after the click. A single call's `open` (snippet
 	 * data) wins over it in both directions.
 	 */
@@ -295,7 +295,7 @@ class Embed
 
 	/**
 	 * Where /shoji/<kind>/… redirects to: the provider address from the
-	 * definition, passed through the `shoji.url` hook. Null if the provider
+	 * definition, passed through the `sayamaapps.shoji.url` hook. Null if the provider
 	 * has none for this kind or the hook returned no https address.
 	 */
 	public function target(string $kind, int $index = 0): string|null

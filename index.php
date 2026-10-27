@@ -10,7 +10,7 @@ use Kirby\Filesystem\F;
  *
  * Kirby loads this file. It registers the class map and the legacy names, then
  * the definitions in config/. The logic lives in src/. Off by default: without
- * `'shoji.active' => true` the snippet prints a plain link, the video block and
+ * `'sayamaapps.shoji.active' => true` the snippet prints a plain link, the video block and
  * the (video:) tag behave exactly like Kirby's, and the routes answer 404.
  *
  * Nothing in the page names the provider's host: the preview image, the iframe,
