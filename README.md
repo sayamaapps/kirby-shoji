@@ -109,7 +109,7 @@ Keep `data-shoji` and the `data-shoji-*` attributes on the container, and print 
 
 ## Configuration
 
-All keys are read as `sayamaapps.shoji.<name>`, flat or nested. `null` means "not set". The 1.x spelling `shoji.<name>` still works as a fallback until the next major version; it is reported as a deprecation in debug mode (see [Deprecations](#deprecations)).
+All keys are read as `sayamaapps.shoji.<name>`, flat or nested. `null` means "not set". The 1.x spelling `shoji.<name>` still works as a fallback until the next major version. It is documented as deprecated and logs nothing (see [Deprecations](#deprecations)).
 
 | Option (1.x name) | Default | Description |
 |---|---|---|
@@ -129,7 +129,7 @@ A provider is an entry in `sayamaapps.shoji.providers`; the built-in ones are `y
 
 ## Deprecations
 
-Kept until the next major version. The 1.x names keep working; in debug mode each use is reported once as a deprecation.
+Kept until the next major version. The 1.x names keep working without a runtime notice, also in debug mode. Each one is marked `@deprecated` in the code.
 
 | 1.x | Now | Notes |
 |---|---|---|
@@ -142,8 +142,18 @@ Kept until the next major version. The 1.x names keep working; in debug mode eac
 | `shoji_video($kirby, $url)` | `Api::video($kirby, $url)` | |
 | `shoji_route(...)`, `shoji_core_tag(...)` | `Api::route(...)`, `Api::coreTag(...)` | Used by the plugin itself; sites do not need them. |
 | Classes `Shoji\Embed`, `Shoji\Options`, `Shoji\Providers`, `Shoji\I18n`, `Shoji\Signer`, `Shoji\Thumbs`, `Shoji\Http` | `Sayamaapps\Shoji\…` | Class aliases. |
+| `I18n::t($key, $values)`, `I18n::table($language)` | `I18n::text()`, `I18n::translations()` | Internal; 1.x behaviour kept. |
+| `Http::$fake` (test hook) | Pass a fetcher to `Thumbs` | Internal. |
 
 The snippets `shoji/embed`, `shoji/fallback` and the block `blocks/video` keep their names. The `(video:)` tag keeps its name and attributes.
+
+### Planned for 2.0
+
+Breaking changes, so they wait for the next major version:
+
+- Removal of the 1.x names: the `shoji_*()` functions, the `Shoji\*` class aliases, `Http::$fake`, `I18n::t()`, `I18n::table()`.
+- Removal of the `shoji.<key>` option spelling and of the constant `Options::PREFIX`.
+- `Signer` throws Kirby's exception class instead of `RuntimeException`.
 
 ## Design notes
 
