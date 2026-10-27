@@ -9,7 +9,7 @@ use Kirby\Toolkit\I18n as KirbyI18n;
  * are registered as plugin translations (config/translations.php) under
  * `sayamaapps.shoji.<key>`, and as `shoji.<key>` for sites that already use it.
  *
- * `shoji.texts` replaces single strings, per language or for all. Their keys
+ * `sayamaapps.shoji.texts` (1.x: `shoji.texts`) replaces single strings, per language or for all. Their keys
  * are the short keys of translations/<language>.php:
  *
  *   'sayamaapps.shoji.texts' => ['de' => ['note.video' => 'Das Video lädt erst nach Deinem Klick …']]
@@ -60,7 +60,7 @@ class I18n
 		self::$language = in_array($language, self::LANGUAGES, true) ? $language : 'en';
 	}
 
-	/** Strings from `shoji.texts` for the current language; flat keys apply to every language. */
+	/** Strings from `sayamaapps.shoji.texts` for the current language; flat keys apply to every language. */
 	public static function setOverrides(mixed $texts): void
 	{
 		self::$overrides = [];
