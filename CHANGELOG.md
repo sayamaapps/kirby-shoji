@@ -17,11 +17,14 @@ All notable changes to this project are documented here. Versions follow
 
 - The 1.x test hook `Http::$fake` is removed (breaking, test code only). Tests pass
   their preview image fetcher to `Thumbs` instead.
+- `I18n::t()` and `I18n::table()` are removed (not in the README). Use `I18n::text()`.
 
 ### Changed
 
 - Options are read as `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>`
   still works as a fallback and is reported as a deprecation in debug mode.
+- The visitor texts are Kirby translations under `sayamaapps.shoji.<key>`; the
+  1.x key `shoji.<key>` is registered as well.
 - The constant `Options::PREFIX` keeps its 1.x value `shoji.`. The new
   spelling is `Options::CURRENT_PREFIX` (`sayamaapps.shoji.`).
 - The helper functions (`shoji_embed()`, `shoji_video()` and the others) are
