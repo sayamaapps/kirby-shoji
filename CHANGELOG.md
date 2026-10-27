@@ -17,8 +17,8 @@ All notable changes to this project are documented here. Versions follow
 
 - Options are read as `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>`
   still works as a fallback and is reported as a deprecation in debug mode.
-- The constant `Options::PREFIX` is `sayamaapps.shoji.` (1.x: `shoji.`). The
-  `Options::LEGACY_PREFIX` constant holds the 1.x spelling.
+- The constant `Options::PREFIX` keeps its 1.x value `shoji.`. The new
+  spelling is `Options::CURRENT_PREFIX` (`sayamaapps.shoji.`).
 - The helper functions (`shoji_embed()`, `shoji_video()` and the others) are
   deprecated wrappers around `Sayamaapps\Shoji\Api`. Their names keep working.
 - The classes live in the `Sayamaapps\Shoji` namespace; the 1.x names are aliases.

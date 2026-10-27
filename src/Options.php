@@ -25,11 +25,11 @@ use WeakMap;
  */
 class Options
 {
-	/** Option prefix of 1.x, read as a fallback until the next major version. */
-	public const LEGACY_PREFIX = 'shoji.';
+	/** Option prefix of the current spelling, read first. */
+	public const CURRENT_PREFIX = 'sayamaapps.shoji.';
 
-	/** Option prefix of the current spelling. */
-	public const PREFIX = 'sayamaapps.shoji.';
+	/** Option prefix of 1.x (`shoji.<key>`), read as a fallback until the next major version. */
+	public const PREFIX = 'shoji.';
 
 	/** Pages tried, in this order, for the privacy link when `shoji.privacy` is not set. */
 	public const PRIVACY_PAGES = ['datenschutz', 'datenschutzerklaerung', 'privacy', 'privacy-policy'];
@@ -52,15 +52,15 @@ class Options
 	 */
 	public static function get(App $kirby, string $key, mixed $default = null): mixed
 	{
-		$value = $kirby->option(self::PREFIX . $key);
+		$value = $kirby->option(self::CURRENT_PREFIX . $key);
 		if ($value !== null) {
 			return $value;
 		}
 
-		$legacy = $kirby->option(self::LEGACY_PREFIX . $key);
+		$legacy = $kirby->option(self::PREFIX . $key);
 		if ($legacy !== null) {
 			Helpers::deprecated(
-				'Shoji: shoji.' . $key . ' is deprecated, use ' . self::PREFIX . $key,
+				'Shoji: shoji.' . $key . ' is deprecated, use ' . self::CURRENT_PREFIX . $key,
 				'option-prefix'
 			);
 		}
