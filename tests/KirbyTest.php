@@ -430,8 +430,8 @@ final class KirbyTest extends ShojiTestCase
 		ini_set('error_log', (string)$logged);
 		$lines = (string)file_get_contents($log);
 		unlink($log);
-		holds(str_contains($lines, "Shoji: ignoring sayamaapps.shoji.open for 'nope' (no such provider)"), 'open: unknown provider logged');
-		holds(str_contains($lines, 'Shoji: ignoring sayamaapps.shoji.open for youtube (value must be true or false)') && str_contains($lines, 'sayamaapps.shoji.open for vimeo (value must'), 'open: non-bool values logged');
+		holds(str_contains($lines, "Shoji: ignoring shoji.open for 'nope' (no such provider)"), 'open: unknown provider logged');
+		holds(str_contains($lines, 'Shoji: ignoring shoji.open for youtube (value must be true or false)') && str_contains($lines, 'shoji.open for vimeo (value must'), 'open: non-bool values logged');
 		expect(1, substr_count($lines, "'nope'"), 'open: logged once per request, not once per embed');
 
 		// Shoji off: the switch opens nothing.

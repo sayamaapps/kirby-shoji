@@ -201,14 +201,14 @@ final class ProvidersTest extends TestCase
 		expect(['brevo' => true, 'vimeo' => false], Providers::open(['brevo' => true, 'vimeo' => false], $withBrevo), 'open: built-in and own providers, true and false');
 		expect(['digistore' => true], Providers::open(['nope' => true, 'youtube' => 'yes', 'vimeo' => 1, 0 => true, 'digistore' => true], $withBrevo), 'open: unknown names and non-bool values dropped');
 		$logged = (string)file_get_contents($log);
-		holds(str_contains($logged, "Shoji: ignoring sayamaapps.shoji.open for 'nope' (no such provider)"), 'open: unknown provider logged');
-		holds(str_contains($logged, 'Shoji: ignoring sayamaapps.shoji.open for youtube (value must be true or false)') && str_contains($logged, 'sayamaapps.shoji.open for vimeo (value'), 'open: non-bool values logged');
-		holds(str_contains($logged, 'Shoji: ignoring sayamaapps.shoji.open for 0 (no such provider)'), 'open: a list entry is no provider name');
+		holds(str_contains($logged, "Shoji: ignoring shoji.open for 'nope' (no such provider)"), 'open: unknown provider logged');
+		holds(str_contains($logged, 'Shoji: ignoring shoji.open for youtube (value must be true or false)') && str_contains($logged, 'shoji.open for vimeo (value'), 'open: non-bool values logged');
+		holds(str_contains($logged, 'Shoji: ignoring shoji.open for 0 (no such provider)'), 'open: a list entry is no provider name');
 		holds(!str_contains($logged, 'digistore'), 'open: valid entries not logged');
 		expect([], Providers::open(['brevo' => true], Providers::all()), 'open: a provider that is not defined (or removed) never opens');
 		file_put_contents($log, '');
 		expect([], Providers::open(true, $withBrevo), 'open: no switch for every provider at once');
-		holds(str_contains((string)file_get_contents($log), 'Shoji: ignoring sayamaapps.shoji.open (must be an array'), 'open: a non-array logged');
+		holds(str_contains((string)file_get_contents($log), 'Shoji: ignoring shoji.open (must be an array'), 'open: a non-array logged');
 		ini_set('error_log', '/dev/null');
 		unlink($log);
 

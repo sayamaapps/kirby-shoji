@@ -326,17 +326,17 @@ class Providers
 			return [];
 		}
 		if (!is_array($configured)) {
-			error_log('Shoji: ignoring sayamaapps.shoji.open (must be an array of provider name => true|false)');
+			error_log('Shoji: ignoring shoji.open (must be an array of provider name => true|false)');
 			return [];
 		}
 		$open = [];
 		foreach ($configured as $name => $value) {
 			if (!is_string($name) || !isset($providers[$name])) {
-				error_log('Shoji: ignoring sayamaapps.shoji.open for ' . var_export($name, true) . ' (no such provider)');
+				error_log('Shoji: ignoring shoji.open for ' . var_export($name, true) . ' (no such provider)');
 				continue;
 			}
 			if (!is_bool($value)) {
-				error_log("Shoji: ignoring sayamaapps.shoji.open for $name (value must be true or false)");
+				error_log("Shoji: ignoring shoji.open for $name (value must be true or false)");
 				continue;
 			}
 			$open[$name] = $value;
