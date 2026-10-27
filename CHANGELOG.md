@@ -7,9 +7,45 @@ All notable changes to this project are documented here. Versions follow
   click, or without one) is a **major** version, whatever the code change.
 - **A change to a built-in provider's addresses** (embed, link, script,
   preview image) is at least a minor version and listed here.
-- A change to the privacy text (`DATENSCHUTZ.md` / `PRIVACY.md`) is marked
+- A change to the privacy text (`docs/DATENSCHUTZ.md` / `docs/PRIVACY.md`) is marked
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
+
+## [Unreleased]
+
+### Deprecated
+
+- The 1.x test hook `Http::$fake` is kept, marked `@deprecated @internal`. Tests can
+  also pass their preview image fetcher to `Thumbs`.
+- `I18n::t()` and `I18n::table()` are kept, marked `@deprecated @internal`. They
+  behave as in 1.x and work without Kirby. Use `I18n::text()` and `I18n::translations()`.
+
+### Changed
+
+- Options are read as `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>`
+  still works as a fallback. It is documented as deprecated and logs nothing.
+- The visitor texts are Kirby translations under `sayamaapps.shoji.<key>`; the
+  1.x key `shoji.<key>` is registered as well.
+- The constant `Options::PREFIX` keeps its 1.x value `shoji.`. The new
+  spelling is `Options::CURRENT_PREFIX` (`sayamaapps.shoji.`).
+- The helper functions (`shoji_embed()`, `shoji_video()` and the others) are
+  deprecated wrappers around `Sayamaapps\Shoji\Api`. Their names keep working.
+- The classes live in the `Sayamaapps\Shoji` namespace; the 1.x names are aliases.
+- `Thumbs` takes its preview image fetcher as an optional second argument;
+  `new Thumbs($directory)` still works.
+- The classes are no longer `final`, so a site can extend them.
+- The privacy texts are in `docs/`. Installed packages do not include the tests,
+  CI, the analysis configuration or the repository documents.
+
+### Planned for 2.0
+
+Breaking changes, so they wait for the next major version:
+
+- Removal of the 1.x names: the `shoji_*()` functions, the `Shoji\*` class aliases,
+  `Http::$fake`, `I18n::t()`, `I18n::table()`.
+- Removal of the `shoji.<key>` option spelling and of the constant `Options::PREFIX`.
+- `Signer` throws Kirby's exception class instead of `RuntimeException`.
+- Log texts name `sayamaapps.shoji.<key>` instead of `shoji.<key>`.
 
 ## [1.3.1] — 2026-10-26
 

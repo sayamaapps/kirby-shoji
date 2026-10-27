@@ -14,20 +14,21 @@
  * @var string|null $url the pasted address
  */
 
-use Shoji\I18n;
-use Shoji\Providers;
+use Sayamaapps\Shoji\Api;
+use Sayamaapps\Shoji\I18n;
+use Sayamaapps\Shoji\Providers;
 
 $provider = isset($url) && is_string($url) ? Providers::protectedProvider($url) : null;
 if ($provider === null) {
-    return;
+	return;
 }
-shoji_i18n();
+Api::i18n(kirby());
 $names = ['name' => Providers::PROTECTED[$provider]['name']];
 $href = Providers::plainLink($url);
 ?>
 <div class="<?= esc('shoji shoji-fallback shoji-' . $provider) ?>">
   <?php if ($href !== null) : ?>
-  <a class="shoji-button" href="<?= esc($href) ?>" rel="noopener"><?= esc(I18n::t('open', $names)) ?></a>
+  <a class="shoji-button" href="<?= esc($href) ?>" rel="noopener"><?= esc(I18n::text('open', $names)) ?></a>
   <?php endif ?>
-  <p class="shoji-note"><?= esc(I18n::t('fallback', $names)) ?></p>
+  <p class="shoji-note"><?= esc(I18n::text('fallback', $names)) ?></p>
 </div>

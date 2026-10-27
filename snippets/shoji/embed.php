@@ -3,7 +3,7 @@
  * The placeholder, the plain default shipped with Shoji. No CSS: the look
  * belongs to the site (classes shoji-*). For your own markup create
  * site/snippets/shoji/embed.php (Kirby takes that one first) and build it
- * from shoji_embed() — see the README.
+ * from Api::embed() — see the README.
  *
  *   <?php snippet('shoji/embed', ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'title' => 'Trailer']) ?>
  *   <?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'params' => ['form' => '78901']]) ?>
@@ -17,101 +17,103 @@
  * /shoji/… on this site. Without JavaScript the button is a plain link that
  * leads to the provider (kind 'html' without a `link`: to the bare markup).
  *
- * @var \Shoji\Embed|null $embed   ready-made, or:
- * @var string|null       $url     a pasted address, or:
- * @var string|null       $provider  with $id
- * @var string|null       $id
- * @var array|null        $params  extra parameters for the provider address (signed)
- * @var string|null       $title   video title: alt text, button, iframe title
- * @var string|null       $label   button text instead of the default
+ * @var \Sayamaapps\Shoji\Embed|null $embed   ready-made, or:
+ * @var string|null $url     a pasted address, or:
+ * @var string|null $provider  with $id
+ * @var string|null $id
+ * @var array|null $params  extra parameters for the provider address (signed)
+ * @var string|null $title   video title: alt text, button, iframe title
+ * @var string|null $label   button text instead of the default
  * @var string|false|null $note    note text instead of the default; false = none
- * @var string|null       $class   extra classes on the container
- * @var string|null       $buttonClass extra classes on the button
- * @var string|null       $frameClass extra classes on the iframe
- * @var array|null        $attrs   extra container attributes (data-*, aria-*, id only)
- * @var bool|null         $open    true: the content right away, without placeholder
- *                                 (for a site that remembers consent itself);
- *                                 false: placeholder; not given (or no bool):
- *                                 the provider's switch in `shoji.open`
+ * @var string|null $class   extra classes on the container
+ * @var string|null $buttonClass extra classes on the button
+ * @var string|null $frameClass extra classes on the iframe
+ * @var array|null $attrs   extra container attributes (data-*, aria-*, id only)
+ * @var bool|null $open    true: the content right away, without placeholder
+ *                (for a site that remembers consent itself);
+ *                false: placeholder; not given (or no bool):
+ *                the provider's switch in `sayamaapps.shoji.open`
  */
 
-use Shoji\I18n;
-use Shoji\Options;
+use Sayamaapps\Shoji\Api;
+use Sayamaapps\Shoji\I18n;
+use Sayamaapps\Shoji\Options;
 
-$embed ??= isset($url) && is_string($url)
-    ? shoji_embed($url, null, $params ?? [], $title ?? null)
-    : (isset($provider, $id) ? shoji_embed((string) $provider, (string) $id, $params ?? [], $title ?? null) : null);
-if ($embed === null) {
-    return;
-}
-shoji_i18n();
-$t = fn (string $key, array $values = []) => I18n::t($key, $values);
-$names = ['name' => $embed->name(), 'company' => $embed->company()];
-
-// Switched off: a plain link to the provider. Loads nothing, breaks nothing.
-if (!Options::active(kirby())) {
-    if ($target = $embed->target('go')) : ?>
+$embed ??= Api::embedFor(kirby(), $url ?? null, $provider ?? null, $id ?? null, $params ?? [], $title ?? null);
+if ($embed !== null) :
+	Api::i18n(kirby());
+	$active = Options::active(kirby());
+	$t = fn (string $key, array $values = []) => I18n::text($key, $values);
+	$names = ['name' => $embed->name(), 'company' => $embed->company()];
+	$classes = trim('shoji shoji-' . $embed->kind() . ' shoji-' . $embed->provider . ' ' . ($class ?? ''));
+	$frameTitle = $embed->title ?? $t('frame', $names);
+	// The call decides if it says true or false; otherwise the provider's switch.
+	$open = $active && (is_bool($open ?? null) ? $open : $embed->open());
+	$extra = Api::attributes($attrs ?? null);
+	$extraAttrs = $extra ? ' ' . attr($extra) : '';
+	?>
+	<?php if (!$active) : ?>
+	<?php // Switched off: a plain link to the provider. Loads nothing, breaks nothing.?>
+	<?php if ($target = $embed->target('go')) : ?>
 <a class="shoji-link" href="<?= esc($target) ?>" rel="noopener"><?= esc($embed->title ?? $t('open', $names)) ?></a>
-    <?php endif;
-    return;
-}
-
-$classes = trim('shoji shoji-' . $embed->kind() . ' shoji-' . $embed->provider . ' ' . ($class ?? ''));
-$frameTitle = $embed->title ?? $t('frame', $names);
-// The call decides if it says true or false; otherwise the provider's switch.
-$open = is_bool($open ?? null) ? $open : $embed->open();
-$extra = [];
-foreach (is_array($attrs ?? null) ? $attrs : [] as $name => $value) {
-    if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
-        $extra[$name] = (string) $value;
-    }
-}
-
-if ($open && $embed->kind() === 'html') : ?>
-<div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
+	<?php endif ?>
+	<?php elseif ($open) : ?>
+<div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extraAttrs ?>>
+	<?php if ($embed->kind() === 'html') : ?>
   <?php foreach ($embed->styleUrls() as $style) : ?><link rel="stylesheet" href="<?= esc($style) ?>"><?php endforeach ?>
   <div class="shoji-markup"><?= $embed->html() ?></div>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
-</div>
-<?php
-    return;
-elseif ($open) : ?>
-<div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
+	<?php else : ?>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
-  <iframe class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>" src="<?= esc($embed->frameUrl()) ?>" title="<?= esc($frameTitle) ?>" allow="<?= esc($embed->allow()) ?>" allowfullscreen loading="lazy"></iframe>
+  <iframe
+    class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>"
+    src="<?= esc($embed->frameUrl()) ?>"
+    title="<?= esc($frameTitle) ?>"
+    allow="<?= esc($embed->allow()) ?>"
+    allowfullscreen
+    loading="lazy"></iframe>
+	<?php endif ?>
 </div>
-<?php
-    return;
-endif;
-
-$label ??= match ($embed->kind()) {
-    'video' => $embed->title !== null ? $t('button.videoTitle', ['title' => $embed->title]) : $t('button.video'),
-    'form', 'html' => $t('button.form'),
-    default => $t('button.content'),
-};
-$note ??= $t('note.' . $embed->kind(), $names);
-$privacy = $note !== false ? Options::privacyUrl(kirby()) : null;
-$thumb = $embed->thumbUrl();
-$size = $embed->size();
-// Kind 'html' loads the site's markup instead of an iframe. Several scripts
-// or stylesheets: own addresses separated by a space, loaded in this order.
-$data = ['data-shoji-provider' => $embed->provider];
-if ($html = $embed->htmlUrl()) {
-    $data['data-shoji-html'] = $html;
-} else {
-    $data += ['data-shoji-frame' => $embed->frameUrl(), 'data-shoji-title' => $frameTitle, 'data-shoji-allow' => $embed->allow()];
-}
-$data['data-shoji-script'] = implode(' ', $embed->scriptUrls());
-$data['data-shoji-style'] = implode(' ', $embed->styleUrls());
-$data['data-shoji-frame-class'] = $html ? '' : ($frameClass ?? '');
-?>
-<div class="<?= esc($classes) ?>" data-shoji<?php foreach ($data as $name => $value) : if ($value !== '') : ?> <?= $name ?>="<?= esc($value) ?>"<?php endif; endforeach ?><?= $extra ? ' ' . attr($extra) : '' ?>>
+	<?php else : ?>
+	<?php
+	$label ??= match ($embed->kind()) {
+		'video' => $embed->title !== null ? $t('button.videoTitle', ['title' => $embed->title]) : $t('button.video'),
+		'form', 'html' => $t('button.form'),
+		default => $t('button.content'),
+	};
+	$note ??= $t('note.' . $embed->kind(), $names);
+	$privacy = $note !== false ? Options::privacyUrl(kirby()) : null;
+	$thumb = $embed->thumbUrl();
+	$size = $embed->size();
+	// Kind 'html' loads the site's markup instead of an iframe. Several scripts
+	// or stylesheets: own addresses separated by a space, loaded in this order.
+	$data = ['data-shoji-provider' => $embed->provider];
+	if ($html = $embed->htmlUrl()) {
+		$data['data-shoji-html'] = $html;
+	} else {
+		$data += ['data-shoji-frame' => $embed->frameUrl(), 'data-shoji-title' => $frameTitle, 'data-shoji-allow' => $embed->allow()];
+	}
+	$data['data-shoji-script'] = implode(' ', $embed->scriptUrls());
+	$data['data-shoji-style'] = implode(' ', $embed->styleUrls());
+	$data['data-shoji-frame-class'] = $html ? '' : ($frameClass ?? '');
+	$dataAttrs = '';
+	foreach ($data as $name => $value) {
+		if ($value !== '') {
+			$dataAttrs .= ' ' . $name . '="' . esc($value) . '"';
+		}
+	}
+	$thumbAlt = esc($embed->title !== null ? $t('thumbAlt', ['title' => $embed->title]) : $t('thumbAltUntitled', $names));
+	$sizeAttrs = $size ? ' width="' . $size[0] . '" height="' . $size[1] . '"' : '';
+	?>
+<div class="<?= esc($classes) ?>" data-shoji<?= $dataAttrs ?><?= $extraAttrs ?>>
   <?php if ($thumb) : ?>
-  <img class="shoji-thumb" src="<?= esc($thumb) ?>" alt="<?= esc($embed->title !== null ? $t('thumbAlt', ['title' => $embed->title]) : $t('thumbAltUntitled', $names)) ?>"<?php if ($size) : ?> width="<?= $size[0] ?>" height="<?= $size[1] ?>"<?php endif ?> loading="lazy" decoding="async">
+  <img class="shoji-thumb" src="<?= esc($thumb) ?>" alt="<?= $thumbAlt ?>"<?= $sizeAttrs ?> loading="lazy" decoding="async">
   <?php endif ?>
   <a class="<?= esc(trim('shoji-button ' . ($buttonClass ?? ''))) ?>" href="<?= esc($embed->linkUrl()) ?>" rel="nofollow"><?= esc($label) ?></a>
   <?php if ($note !== false && $note !== '') : ?>
   <p class="shoji-note"><?= esc($note) ?><?php if ($privacy) : ?> <a class="shoji-privacy" href="<?= esc($privacy) ?>"><?= esc($t('privacy')) ?></a><?php endif ?></p>
   <?php endif ?>
 </div>
-<?= shoji_script_tag() ?>
+<?= Api::scriptTag(kirby()) ?>
+	<?php endif ?>
+<?php endif ?>
