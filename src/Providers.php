@@ -54,6 +54,7 @@ use Closure;
  *
  *   'shoji.open' => ['brevo' => true]
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder

@@ -10,6 +10,7 @@ use Kirby\Exception\Exception;
  * route would be an open proxy: anyone could make the server fetch preview
  * images for arbitrary ids from the provider.
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder

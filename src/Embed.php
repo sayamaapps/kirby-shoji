@@ -14,6 +14,7 @@ use WeakMap;
  * The default snippet uses it; a site with its own markup gets one from
  * shoji_embed() and builds the placeholder from these methods.
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder

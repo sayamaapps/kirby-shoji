@@ -13,6 +13,7 @@ use WeakMap;
  * (video:) tag call. legacy.php keeps the 1.x helper functions as wrappers
  * around these methods.
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder

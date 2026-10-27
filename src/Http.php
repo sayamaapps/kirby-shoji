@@ -7,6 +7,7 @@ namespace Sayamaapps\Shoji;
  * when available, otherwise PHP's stream wrapper. Sends no visitor data: no
  * cookies, no forwarded IP, no referrer, a fixed user agent.
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder

@@ -18,6 +18,7 @@ namespace Sayamaapps\Shoji;
  * The language is set once per request (index.php, Options::language()) and
  * defaults to English. Missing keys fall back to English, then to the key.
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder

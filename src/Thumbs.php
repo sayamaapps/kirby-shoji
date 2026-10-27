@@ -15,6 +15,7 @@ use Closure;
  * a preview image does not make every page view ask the provider again. A
  * corrected parameter (a Vimeo hash) is asked for at once.
  *
+ * @package   Kirby Shoji
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-shoji
  * @copyright Simon Räder
