@@ -37,6 +37,9 @@ class I18n
 	/** @var array<string,string> */
 	private static array $overrides = [];
 
+	/** @var array<string, array<string,string>> */
+	private static array $tables = [];
+
 	/**
 	 * The language of the visitor-facing text for this request.
 	 */
@@ -94,6 +97,42 @@ class I18n
 			$pairs['{' . $name . '}'] = (string)$value;
 		}
 		return strtr($text, $pairs);
+	}
+
+	/**
+	 * The text for a key of translations/<language>.php in the current language,
+	 * read without Kirby. `{name}` placeholders are replaced with the given values, unescaped.
+	 *
+	 * @deprecated 1.x method, kept until the next major version. Use text().
+	 * @internal
+	 * @SuppressWarnings(PHPMD.ShortMethodName) The name is the 1.x API.
+	 */
+	public static function t(string $key, array $values = []): string
+	{
+		$text = self::$overrides[$key] ?? self::table(self::$language)[$key] ?? self::table('en')[$key] ?? $key;
+		if ($values === []) {
+			return $text;
+		}
+		$pairs = [];
+		foreach ($values as $name => $value) {
+			$pairs['{' . $name . '}'] = (string)$value;
+		}
+		return strtr($text, $pairs);
+	}
+
+	/**
+	 * A translations/<language>.php table, read without Kirby.
+	 *
+	 * @deprecated 1.x method, kept until the next major version. Use translations() or text().
+	 * @internal
+	 * @return array<string,string>
+	 */
+	public static function table(string $language): array
+	{
+		if (!in_array($language, self::LANGUAGES, true)) {
+			return [];
+		}
+		return self::$tables[$language] ??= require dirname(__DIR__) . '/translations/' . $language . '.php';
 	}
 
 	/**

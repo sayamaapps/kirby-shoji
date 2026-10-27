@@ -2,7 +2,7 @@
 
 namespace Sayamaapps\Shoji;
 
-use Kirby\Exception\Exception;
+use RuntimeException;
 
 /**
  * Signs Shoji's own addresses (/shoji/thumb|frame|script|go/…), so only
@@ -27,7 +27,7 @@ class Signer
 	public function __construct(private readonly string $secret)
 	{
 		if (strlen($secret) < 16) {
-			throw new Exception(message: 'Shoji: the secret is too short');
+			throw new RuntimeException('Shoji: the secret is too short');
 		}
 	}
 
