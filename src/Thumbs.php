@@ -31,8 +31,8 @@ class Thumbs
 	public const TYPES = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
 
 	/**
-	 * @param string       $directory the cache folder (storage/shoji/thumbs)
-	 * @param Closure|null $fetch     fn (string $url): array{0:int,1:string}, the server-side GET; null for Http::get()
+	 * The cache folder is storage/shoji/thumbs. The fetcher is the server-side
+	 * GET, fn (string $url): array{0:int,1:string}; without one, Http::get().
 	 */
 	public function __construct(
 		private readonly string $directory,
