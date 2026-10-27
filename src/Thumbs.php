@@ -30,11 +30,12 @@ final class Thumbs
 	public const TYPES = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
 
 	/**
-	 * @param $fetch fn (string $url): array{0:int,1:string}, the server-side GET (Http::get() in production)
+	 * @param string       $directory the cache folder (storage/shoji/thumbs)
+	 * @param Closure|null $fetch     fn (string $url): array{0:int,1:string}, the server-side GET; null for Http::get()
 	 */
 	public function __construct(
 		private readonly string $directory,
-		private readonly Closure $fetch
+		private readonly Closure|null $fetch = null
 	) {
 	}
 
@@ -52,8 +53,9 @@ final class Thumbs
 	/** @return array{0:string,1:string}|null bytes and extension of the first usable candidate */
 	private function fetch(Embed $embed): array|null
 	{
-		foreach ($embed->thumbnailCandidates($this->fetch) as $url) {
-			[$status, $bytes] = ($this->fetch)($url);
+		$fetch = $this->fetch ?? Http::get(...);
+		foreach ($embed->thumbnailCandidates($fetch) as $url) {
+			[$status, $bytes] = $fetch($url);
 			if ($status !== 200 || strlen($bytes) < self::MIN_BYTES) {
 				continue;
 			}
