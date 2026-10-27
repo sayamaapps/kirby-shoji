@@ -45,6 +45,7 @@ Breaking changes, so they wait for the next major version:
   `Http::$fake`, `I18n::t()`, `I18n::table()`.
 - Removal of the `shoji.<key>` option spelling and of the constant `Options::PREFIX`.
 - `Signer` throws Kirby's exception class instead of `RuntimeException`.
+- Log texts name `sayamaapps.shoji.<key>` instead of `shoji.<key>`.
 
 ## [1.3.1] — 2026-10-26
 

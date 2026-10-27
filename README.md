@@ -154,6 +154,7 @@ Breaking changes, so they wait for the next major version:
 - Removal of the 1.x names: the `shoji_*()` functions, the `Shoji\*` class aliases, `Http::$fake`, `I18n::t()`, `I18n::table()`.
 - Removal of the `shoji.<key>` option spelling and of the constant `Options::PREFIX`.
 - `Signer` throws Kirby's exception class instead of `RuntimeException`.
+- Log texts name `sayamaapps.shoji.<key>` instead of `shoji.<key>`.
 
 ## Design notes
 
@@ -163,7 +164,8 @@ Where the plugin differs from the usual Kirby conventions, on purpose:
 - The visitor texts are Kirby translations under `sayamaapps.shoji.<key>`, and under `shoji.<key>` for existing sites (`t('shoji.<key>')`). Shoji picks the language per request (`sayamaapps.shoji.language`, the page's language, then English) and looks each text up in it with `I18n::text()`, falling back to English itself. Kirby's own `t()` would fall back to the site's fallback locale.
 - Preview images are fetched with a small HTTP client that sends no cookies or referrer and stops at a timeout and a size limit.
 - The secret and the preview image cache are written by the first request that needs them, in `storage/shoji/`.
-- The options have no `options` block in `index.php`. Kirby's default for a plugin option is a flat key that would hide the nested `sayamaapps: shoji:` config. The defaults are in the table above and in `Options::get()`; this is a deliberate deviation from the usual Kirby layout.
+- Preview images are kept as files in `storage/shoji/thumbs/`, not in Kirby's cache. The route serves the file with Shoji's own expiry (`Thumbs::MAX_AGE` for images, `Thumbs::MISS_AGE` after a failed fetch), and the cache keeps working when a site switches Kirby's cache off (`cache.<name>.active`).
+- The options have no `options` block in `index.php`. A declared default, even `null`, hides the nested `sayamaapps: shoji:` config, because Kirby reads the flat key first. The defaults are in the table above and in `Options::get()`; this is a deliberate deviation from the usual Kirby layout.
 - The `(video:)` tag and the video block fall back to Kirby's own output from the core for everything Shoji does not take over. Kirby's public API does not return that output once the plugin overrides the `video` tag and the video block, so the core files are read by path (`config/tags.php`, `config/blocks/video/video.php`). `tests/CoreFilesTest.php` checks them after a Kirby update.
 
 ## Content Security Policy
