@@ -83,23 +83,6 @@ class I18n
 	}
 
 	/**
-	 * The text for a key of translations/<language>.php in the current language.
-	 * `{name}` placeholders are replaced with the given values, unescaped.
-	 */
-	public static function text(string $key, array $values = []): string
-	{
-		$text = self::$overrides[$key] ?? self::lookup(self::$language, $key) ?? self::lookup('en', $key) ?? $key;
-		if ($values === []) {
-			return $text;
-		}
-		$pairs = [];
-		foreach ($values as $name => $value) {
-			$pairs['{' . $name . '}'] = (string)$value;
-		}
-		return strtr($text, $pairs);
-	}
-
-	/**
 	 * The text for a key of translations/<language>.php in the current language,
 	 * read without Kirby. `{name}` placeholders are replaced with the given values, unescaped.
 	 *
@@ -133,6 +116,23 @@ class I18n
 			return [];
 		}
 		return self::$tables[$language] ??= require dirname(__DIR__) . '/translations/' . $language . '.php';
+	}
+
+	/**
+	 * The text for a key of translations/<language>.php in the current language.
+	 * `{name}` placeholders are replaced with the given values, unescaped.
+	 */
+	public static function text(string $key, array $values = []): string
+	{
+		$text = self::$overrides[$key] ?? self::lookup(self::$language, $key) ?? self::lookup('en', $key) ?? $key;
+		if ($values === []) {
+			return $text;
+		}
+		$pairs = [];
+		foreach ($values as $name => $value) {
+			$pairs['{' . $name . '}'] = (string)$value;
+		}
+		return strtr($text, $pairs);
 	}
 
 	/**

@@ -61,6 +61,16 @@ final class I18nTest extends TestCase
 		I18n::setOverrides(null);
 	}
 
+	public function testTheOneXLookupWorksWithoutKirby(): void
+	{
+		I18n::setLanguage('de');
+		I18n::setOverrides(null);
+		expect($this->table('de')['privacy'], I18n::t('privacy'), '1.x t() reads the table of the language');
+		expect($this->table('en')['privacy'], I18n::table('en')['privacy'], '1.x table() reads the table');
+		expect([], I18n::table('fr'), '1.x table() of an unknown language is empty');
+		I18n::setLanguage('en');
+	}
+
 	public function testTheTextsAreRegisteredUnderTheNewAndTheOldKey(): void
 	{
 		$translations = I18n::translations();
@@ -74,16 +84,6 @@ final class I18nTest extends TestCase
 	{
 		I18n::setLanguage('fr');
 		expect('en', I18n::language(), 'unknown language falls back to English');
-		I18n::setLanguage('en');
-	}
-
-	public function testTheOneXLookupWorksWithoutKirby(): void
-	{
-		I18n::setLanguage('de');
-		I18n::setOverrides(null);
-		expect($this->table('de')['privacy'], I18n::t('privacy'), '1.x t() reads the table of the language');
-		expect($this->table('en')['privacy'], I18n::table('en')['privacy'], '1.x table() reads the table');
-		expect([], I18n::table('fr'), '1.x table() of an unknown language is empty');
 		I18n::setLanguage('en');
 	}
 }

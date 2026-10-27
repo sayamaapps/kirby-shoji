@@ -377,9 +377,9 @@ class Providers
 			return "'id' is no valid regular expression";
 		}
 		if (isset($definition['match']) && (
-			!is_string($definition['match'])
-			|| $definition['match'] === ''
-			|| Quiet::run(fn () => preg_match($definition['match'], '')) === false
+			!is_string($definition['match']) ||
+			$definition['match'] === '' ||
+			Quiet::run(fn () => preg_match($definition['match'], '')) === false
 		)) {
 			return "'match' is no valid regular expression";
 		}

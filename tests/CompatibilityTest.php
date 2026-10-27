@@ -14,6 +14,12 @@ use Sayamaapps\Shoji\Signer;
 #[CoversClass(Signer::class)]
 final class CompatibilityTest extends TestCase
 {
+	public function testAShortSecretIsRefusedWithTheOneXExceptionClass(): void
+	{
+		$this->expectException(RuntimeException::class);
+		new Signer('short');
+	}
+
 	public function testTheOneXTestHookStillReplacesTheNetwork(): void
 	{
 		$asked = [];
@@ -27,11 +33,5 @@ final class CompatibilityTest extends TestCase
 			Http::$fake = null;
 		}
 		$this->assertSame(['https://example.com/preview.jpg'], $asked, 'the fake was asked for the address');
-	}
-
-	public function testAShortSecretIsRefusedWithTheOneXExceptionClass(): void
-	{
-		$this->expectException(RuntimeException::class);
-		new Signer('short');
 	}
 }
