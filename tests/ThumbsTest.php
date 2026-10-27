@@ -1,7 +1,6 @@
 <?php
 
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\TestCase;
 use Sayamaapps\Shoji\Embed;
 use Sayamaapps\Shoji\Http;
 use Sayamaapps\Shoji\Thumbs;
@@ -12,77 +11,64 @@ use Sayamaapps\Shoji\Thumbs;
  * network is replaced by the closure given to Thumbs.
  */
 #[CoversClass(Thumbs::class)]
-final class ThumbsTest extends TestCase
+final class ThumbsTest extends ShojiTestCase
 {
 	public function testAFailedFirstFetchIsRememberedForADay(): void
 	{
 		$asked = [];
-		[$kirby, $tmp] = shojiKirby();
-		try {
-			$embed = Embed::make($kirby, 'vimeo', '76979871');
-			$thumbs = new Thumbs($tmp . '/thumbs', function (string $url) use (&$asked): array {
-				$asked[] = $url;
-				return [200, '<html>not an image</html>' . str_repeat(' ', 2000)];
-			});
+		[$kirby, $tmp] = $this->site();
+		$embed = Embed::make($kirby, 'vimeo', '76979871');
+		$thumbs = new Thumbs($tmp . '/thumbs', function (string $url) use (&$asked): array {
+			$asked[] = $url;
+			return [200, '<html>not an image</html>' . str_repeat(' ', 2000)];
+		});
 
-			$this->assertNull($thumbs->get($embed), 'an answer that is no image gives no preview image');
-			$this->assertFileExists($tmp . '/thumbs/vimeo/76979871.miss', 'the miss is remembered');
-			$this->assertCount(1, $asked, 'the oEmbed answer was asked once');
+		$this->assertNull($thumbs->get($embed), 'an answer that is no image gives no preview image');
+		$this->assertFileExists($tmp . '/thumbs/vimeo/76979871.miss', 'the miss is remembered');
+		$this->assertCount(1, $asked, 'the oEmbed answer was asked once');
 
-			$asked = [];
-			$this->assertNull($thumbs->get($embed), 'still no preview image');
-			$this->assertSame([], $asked, 'no new fetch within a day after a miss');
-		} finally {
-			removeTree($tmp);
-		}
+		$asked = [];
+		$this->assertNull($thumbs->get($embed), 'still no preview image');
+		$this->assertSame([], $asked, 'no new fetch within a day after a miss');
 	}
 
 	public function testCandidatesAreFetchedInOrderAndTheImageIsCached(): void
 	{
 		$jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 2000);
 		$asked = [];
-		[$kirby, $tmp] = shojiKirby();
-		try {
-			$embed = Embed::make($kirby, 'youtube', 'dQw4w9WgXcQ');
-			$thumbs = new Thumbs($tmp . '/thumbs', function (string $url) use (&$asked, $jpeg): array {
-				$asked[] = $url;
-				return str_contains($url, 'maxresdefault') ? [404, str_repeat('p', 1100)] : [200, $jpeg];
-			});
+		[$kirby, $tmp] = $this->site();
+		$embed = Embed::make($kirby, 'youtube', 'dQw4w9WgXcQ');
+		$thumbs = new Thumbs($tmp . '/thumbs', function (string $url) use (&$asked, $jpeg): array {
+			$asked[] = $url;
+			return str_contains($url, 'maxresdefault') ? [404, str_repeat('p', 1100)] : [200, $jpeg];
+		});
 
-			$image = $thumbs->get($embed);
-			$this->assertSame('image/jpeg', $image['type'] ?? null, 'the JPEG is taken');
-			$this->assertSame($jpeg, file_get_contents($image['file']), 'the fetched bytes are cached');
-			$this->assertSame(
-				['https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg'],
-				$asked,
-				'maxres missing, hq taken'
-			);
+		$image = $thumbs->get($embed);
+		$this->assertSame('image/jpeg', $image['type'] ?? null, 'the JPEG is taken');
+		$this->assertSame($jpeg, file_get_contents($image['file']), 'the fetched bytes are cached');
+		$this->assertSame(
+			['https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg'],
+			$asked,
+			'maxres missing, hq taken'
+		);
 
-			$asked = [];
-			$thumbs->get($embed);
-			$this->assertSame([], $asked, 'the second request is served from the cache');
-		} finally {
-			removeTree($tmp);
-		}
+		$asked = [];
+		$thumbs->get($embed);
+		$this->assertSame([], $asked, 'the second request is served from the cache');
 	}
 
 	public function testWithoutAFetcherTheHttpHookAnswers(): void
 	{
 		$jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('x', 2000);
 		$asked = [];
-		[$kirby, $tmp] = shojiKirby();
+		[$kirby, $tmp] = $this->site();
 		Http::$fake = function (string $url) use (&$asked, $jpeg): array {
 			$asked[] = $url;
 			return [200, $jpeg];
 		};
-		try {
-			// The one-argument form (the 1.x constructor) fetches through Http::get().
-			$image = (new Thumbs($tmp . '/thumbs'))->get(Embed::make($kirby, 'youtube', 'dQw4w9WgXcQ'));
-			$this->assertSame('image/jpeg', $image['type'] ?? null, 'the JPEG is taken');
-			$this->assertNotSame([], $asked, 'the hook answered the fetch');
-		} finally {
-			Http::$fake = null;
-			removeTree($tmp);
-		}
+		// The one-argument form (the 1.x constructor) fetches through Http::get().
+		$image = (new Thumbs($tmp . '/thumbs'))->get(Embed::make($kirby, 'youtube', 'dQw4w9WgXcQ'));
+		$this->assertSame('image/jpeg', $image['type'] ?? null, 'the JPEG is taken');
+		$this->assertNotSame([], $asked, 'the hook answered the fetch');
 	}
 }
