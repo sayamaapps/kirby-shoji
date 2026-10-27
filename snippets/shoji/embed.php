@@ -65,7 +65,13 @@ if ($embed !== null) :
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
 	<?php else : ?>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
-  <iframe class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>" src="<?= esc($embed->frameUrl()) ?>" title="<?= esc($frameTitle) ?>" allow="<?= esc($embed->allow()) ?>" allowfullscreen loading="lazy"></iframe>
+  <iframe
+    class="<?= esc(trim('shoji-frame ' . ($frameClass ?? ''))) ?>"
+    src="<?= esc($embed->frameUrl()) ?>"
+    title="<?= esc($frameTitle) ?>"
+    allow="<?= esc($embed->allow()) ?>"
+    allowfullscreen
+    loading="lazy"></iframe>
 	<?php endif ?>
 </div>
 	<?php else : ?>

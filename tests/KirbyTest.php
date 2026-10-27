@@ -273,7 +273,7 @@ final class KirbyTest extends ShojiTestCase
 		// 5. Open mode: content right away, still only own addresses.
 		file_put_contents($tmp . '/site/templates/home.php', "<?php snippet('shoji/embed', ['provider' => 'digistore', 'id' => '123456', 'open' => true]) ?>");
 		$open = $render($on);
-		holds(str_contains($open, '<iframe class="shoji-frame" src="https://site.example/shoji/frame/digistore/123456'), 'open: iframe through the own address');
+		holds(preg_match('~<iframe\s+class="shoji-frame"\s+src="https://site\.example/shoji/frame/digistore/123456~', $open) === 1, 'open: iframe through the own address');
 		holds(str_contains($open, '<script src="https://site.example/shoji/script/digistore/123456'), 'open: provider script through the own address');
 		holds(preg_match(self::FOREIGN, $open) === 0, 'open: still no provider host in the page');
 
@@ -413,10 +413,10 @@ final class KirbyTest extends ShojiTestCase
 		holds(str_contains($page, '<div class="shoji-markup"><div class="sib-form">') && str_contains($page, 'value="spring-26"'), 'open: brevo\'s markup in the page right away, signed params filled');
 		holds(str_contains($page, '<link rel="stylesheet" href="https://site.example/shoji/style/brevo/newsletter?s='), 'open: brevo stylesheet through the own address');
 		expect(2, preg_match_all('~<script src="https://site\.example/shoji/script/brevo/newsletter\?[^"]+" defer></script>~', $page), 'open: brevo scripts through own addresses');
-		expect(4, preg_match_all('~<iframe class="shoji-frame" src="https://site\.example/shoji/frame/(?:youtube|vimeo)/~', $page), 'open: iframes right away, through own addresses');
+		expect(4, preg_match_all('~<iframe\s+class="shoji-frame"\s+src="https://site\.example/shoji/frame/(?:youtube|vimeo)/~', $page), 'open: iframes right away, through own addresses');
 		holds(str_contains($page, 'src="https://site.example/shoji/frame/youtube/aqz-KE-bpKQ?s='), 'open: the video block opens with the switch');
 		holds(str_contains($page, 'data-shoji-frame="https://site.example/shoji/frame/digistore/123456'), 'open: open => false wins over the switch');
-		holds(!str_contains($page, '<iframe class="shoji-frame" src="https://site.example/shoji/frame/digistore'), 'open: no digistore iframe');
+		holds(preg_match('~<iframe\s+class="shoji-frame"\s+src="https://site\.example/shoji/frame/digistore~', $page) === 0, 'open: no digistore iframe');
 		expect(1, substr_count($page, '/shoji.js"'), 'open: shoji.js once, for the remaining placeholders');
 		holds(preg_match(self::FOREIGN, preg_replace('~<div class="shoji-markup">.*?</form></div></div></div>~s', '', $page)) === 0, 'open: apart from brevo\'s own markup no provider host in the page');
 		$iframes = $attrs($page, 'src');
