@@ -154,6 +154,7 @@ Where the plugin differs from the usual Kirby conventions, on purpose:
 - Preview images are fetched with a small HTTP client that sends no cookies or referrer and stops at a timeout and a size limit.
 - The secret and the preview image cache are written by the first request that needs them, in `storage/shoji/`.
 - The `(video:)` tag and the video block fall back to Kirby's own tag definition from the core for everything Shoji does not take over.
+- The visitor texts come from Shoji's own tables (`translations/`), not from Kirby's translation lookup. Kirby falls back to English for a missing key, so a German note would turn English without a warning. Kirby's translations under `shoji.<key>` are registered as well, for `t('shoji.<key>')`.
 
 ## Content Security Policy
 
