@@ -150,12 +150,11 @@ The snippets `shoji/embed`, `shoji/fallback` and the block `blocks/video` keep t
 Where the plugin differs from the usual Kirby conventions, on purpose:
 
 - The snippet `blocks/video` replaces Kirby's own video block snippet; that is the only way to take over the block.
-- Translation keys stay `shoji.<key>` (also `t('shoji.<key>')`) for existing sites.
+- The visitor texts are Kirby translations under `sayamaapps.shoji.<key>`, and under `shoji.<key>` for existing sites (`t('shoji.<key>')`). Shoji picks the language per request (`sayamaapps.shoji.language`, the page's language, then English) and looks each text up in it with `I18n::text()`, falling back to English itself. Kirby's own `t()` would fall back to the site's fallback locale.
 - Preview images are fetched with a small HTTP client that sends no cookies or referrer and stops at a timeout and a size limit.
 - The secret and the preview image cache are written by the first request that needs them, in `storage/shoji/`.
 - The options have no `options` block in `index.php`. Kirby's default for a plugin option is a flat key that would hide the nested `sayamaapps: shoji:` config. The defaults are in the table above and in `Options::get()`; this is a deliberate deviation from the usual Kirby layout.
 - The `(video:)` tag and the video block fall back to Kirby's own tag definition from the core for everything Shoji does not take over.
-- The visitor texts come from Shoji's own tables (`translations/`), not from Kirby's translation lookup. Kirby falls back to English for a missing key, so a German note would turn English without a warning. Kirby's translations under `shoji.<key>` are registered as well, for `t('shoji.<key>')`.
 
 ## Content Security Policy
 

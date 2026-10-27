@@ -2,20 +2,20 @@
 
 namespace Sayamaapps\Shoji;
 
+use Kirby\Toolkit\I18n as KirbyI18n;
+
 /**
- * Visitor-facing strings, Kirby-free.
+ * Visitor-facing strings. Kirby's translation lookup does the work: the texts
+ * are registered as plugin translations (config/translations.php) under
+ * `sayamaapps.shoji.<key>`, and as `shoji.<key>` for sites that already use it.
  *
- * The tables live in translations/<language>.php and are also registered as
- * Kirby plugin translations under `shoji.<key>` (index.php). Shoji itself
- * reads its own tables: a missing Kirby translation must never silently
- * turn a German note English.
+ * `shoji.texts` replaces single strings, per language or for all. Their keys
+ * are the short keys of translations/<language>.php:
  *
- * `shoji.texts` replaces single strings, per language or for all:
+ *   'sayamaapps.shoji.texts' => ['de' => ['note.video' => 'Das Video lädt erst nach Deinem Klick …']]
+ *   'sayamaapps.shoji.texts' => ['privacy' => 'Datenschutz']
  *
- *   'shoji.texts' => ['de' => ['note.video' => 'Das Video lädt erst nach Deinem Klick …']]
- *   'shoji.texts' => ['privacy' => 'Datenschutz']
- *
- * The language is set once per request (index.php, Options::language()) and
+ * The language is set once per request (Api::i18n(), Options::language()) and
  * defaults to English. Missing keys fall back to English, then to the key.
  *
  * @package   Kirby Shoji
@@ -29,13 +29,31 @@ class I18n
 	/** Languages Shoji ships. English is the default and the fallback. */
 	public const LANGUAGES = ['en', 'de'];
 
+	/** Prefix of the translation keys registered in Kirby. */
+	public const PREFIX = 'sayamaapps.shoji.';
+
 	private static string $language = 'en';
 
 	/** @var array<string,string> */
 	private static array $overrides = [];
 
-	/** @var array<string, array<string,string>> */
-	private static array $tables = [];
+	/**
+	 * The texts as Kirby plugin translations, per language: `sayamaapps.shoji.<key>`
+	 * and the 1.x key `shoji.<key>`.
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	public static function translations(): array
+	{
+		$translations = [];
+		foreach (self::LANGUAGES as $language) {
+			foreach (require dirname(__DIR__) . '/translations/' . $language . '.php' as $key => $text) {
+				$translations[$language][self::PREFIX . $key] = $text;
+				$translations[$language]['shoji.' . $key] = $text;
+			}
+		}
+		return $translations;
+	}
 
 	/**
 	 * The language of the visitor-facing text for this request.
@@ -43,23 +61,6 @@ class I18n
 	public static function language(): string
 	{
 		return self::$language;
-	}
-
-	/**
-	 * The tables as Kirby plugin translations, `shoji.<key>` per language, so a
-	 * site can use t('shoji.<key>') as well.
-	 *
-	 * @return array<string, array<string, string>>
-	 */
-	public static function pluginTranslations(): array
-	{
-		$translations = [];
-		foreach (self::LANGUAGES as $language) {
-			foreach (self::table($language) as $key => $text) {
-				$translations[$language]['shoji.' . $key] = $text;
-			}
-		}
-		return $translations;
 	}
 
 	/**
@@ -89,10 +90,13 @@ class I18n
 		}
 	}
 
-	/** `{name}` placeholders are replaced with the given values, unescaped. */
-	public static function t(string $key, array $values = []): string
+	/**
+	 * The text for a key of translations/<language>.php in the current language.
+	 * `{name}` placeholders are replaced with the given values, unescaped.
+	 */
+	public static function text(string $key, array $values = []): string
 	{
-		$text = self::$overrides[$key] ?? self::table(self::$language)[$key] ?? self::table('en')[$key] ?? $key;
+		$text = self::$overrides[$key] ?? self::lookup(self::$language, $key) ?? self::lookup('en', $key) ?? $key;
 		if ($values === []) {
 			return $text;
 		}
@@ -103,12 +107,10 @@ class I18n
 		return strtr($text, $pairs);
 	}
 
-	/** @return array<string,string> */
-	public static function table(string $language): array
+	/** The Kirby translation of a key in one language, or null. */
+	private static function lookup(string $language, string $key): string|null
 	{
-		if (!in_array($language, self::LANGUAGES, true)) {
-			return [];
-		}
-		return self::$tables[$language] ??= require dirname(__DIR__) . '/translations/' . $language . '.php';
+		$text = KirbyI18n::translate(self::PREFIX . $key, null, $language);
+		return is_string($text) ? $text : null;
 	}
 }

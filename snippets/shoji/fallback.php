@@ -28,7 +28,7 @@ $href = Providers::plainLink($url);
 ?>
 <div class="<?= esc('shoji shoji-fallback shoji-' . $provider) ?>">
   <?php if ($href !== null) : ?>
-  <a class="shoji-button" href="<?= esc($href) ?>" rel="noopener"><?= esc(I18n::t('open', $names)) ?></a>
+  <a class="shoji-button" href="<?= esc($href) ?>" rel="noopener"><?= esc(I18n::text('open', $names)) ?></a>
   <?php endif ?>
-  <p class="shoji-note"><?= esc(I18n::t('fallback', $names)) ?></p>
+  <p class="shoji-note"><?= esc(I18n::text('fallback', $names)) ?></p>
 </div>

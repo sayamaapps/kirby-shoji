@@ -46,7 +46,7 @@ if ($embed === null) {
 	return;
 }
 Api::i18n(kirby());
-$t = fn (string $key, array $values = []) => I18n::t($key, $values);
+$t = fn (string $key, array $values = []) => I18n::text($key, $values);
 $names = ['name' => $embed->name(), 'company' => $embed->company()];
 
 // Switched off: a plain link to the provider. Loads nothing, breaks nothing.
