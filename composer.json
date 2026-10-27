@@ -66,8 +66,8 @@
     "scripts": {
         "analyze:phpmd": "vendor/bin/phpmd src,config,index.php,legacy.php,autoload.php github phpmd.xml.dist",
         "analyze:psalm": "vendor/bin/psalm",
-        "analyze:require-checker": "vendor/bin/composer-require-checker check --config-file=composer-require-checker.json composer.json",
-        "analyze:unused": "vendor/bin/composer-unused",
+        "analyze:require-checker": "vendor/bin/composer-require-checker check --config-file=config/tools/composer-require-checker.json composer.json",
+        "analyze:unused": "vendor/bin/composer-unused --configuration=config/tools/composer-unused.php",
         "normalize:check": "@composer normalize --dry-run",
         "test": "vendor/bin/phpunit"
     }
