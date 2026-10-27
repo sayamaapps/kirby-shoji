@@ -28,8 +28,8 @@ use Kirby\Cms\Html;
 use Kirby\Filesystem\Dir;
 use Kirby\Http\Response;
 use Kirby\Template\Snippet;
-use Sayamaapps\Shoji\Options;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Sayamaapps\Shoji\Options;
 
 #[CoversClass(\Sayamaapps\Shoji\Embed::class)]
 #[CoversClass(\Sayamaapps\Shoji\Options::class)]

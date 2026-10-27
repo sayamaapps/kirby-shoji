@@ -38,29 +38,18 @@ class I18n
 	private static array $overrides = [];
 
 	/**
-	 * The texts as Kirby plugin translations, per language: `sayamaapps.shoji.<key>`
-	 * and the 1.x key `shoji.<key>`.
-	 *
-	 * @return array<string, array<string, string>>
-	 */
-	public static function translations(): array
-	{
-		$translations = [];
-		foreach (self::LANGUAGES as $language) {
-			foreach (require dirname(__DIR__) . '/translations/' . $language . '.php' as $key => $text) {
-				$translations[$language][self::PREFIX . $key] = $text;
-				$translations[$language]['shoji.' . $key] = $text;
-			}
-		}
-		return $translations;
-	}
-
-	/**
 	 * The language of the visitor-facing text for this request.
 	 */
 	public static function language(): string
 	{
 		return self::$language;
+	}
+
+	/** The Kirby translation of a key in one language, or null. */
+	private static function lookup(string $language, string $key): string|null
+	{
+		$text = KirbyI18n::translate(self::PREFIX . $key, null, $language);
+		return is_string($text) ? $text : null;
 	}
 
 	/**
@@ -107,10 +96,21 @@ class I18n
 		return strtr($text, $pairs);
 	}
 
-	/** The Kirby translation of a key in one language, or null. */
-	private static function lookup(string $language, string $key): string|null
+	/**
+	 * The texts as Kirby plugin translations, per language: `sayamaapps.shoji.<key>`
+	 * and the 1.x key `shoji.<key>`.
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	public static function translations(): array
 	{
-		$text = KirbyI18n::translate(self::PREFIX . $key, null, $language);
-		return is_string($text) ? $text : null;
+		$translations = [];
+		foreach (self::LANGUAGES as $language) {
+			foreach (require dirname(__DIR__) . '/translations/' . $language . '.php' as $key => $text) {
+				$translations[$language][self::PREFIX . $key] = $text;
+				$translations[$language]['shoji.' . $key] = $text;
+			}
+		}
+		return $translations;
 	}
 }

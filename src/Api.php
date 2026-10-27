@@ -28,6 +28,22 @@ class Api
 	private static WeakMap|null $printed = null;
 
 	/**
+	 * The extra container attributes of a snippet call: data-*, aria-* and id only.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function attributes(mixed $attrs): array
+	{
+		$extra = [];
+		foreach (is_array($attrs) ? $attrs : [] as $name => $value) {
+			if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
+				$extra[$name] = (string)$value;
+			}
+		}
+		return $extra;
+	}
+
+	/**
 	 * Kirby's own tag definition (html, attr, …) for a tag name, from the core.
 	 *
 	 * @return array<string, mixed>|null
@@ -79,22 +95,6 @@ class Api
 			return null;
 		}
 		return self::embed($kirby, (string)$provider, (string)$id, $params, $title);
-	}
-
-	/**
-	 * The extra container attributes of a snippet call: data-*, aria-* and id only.
-	 *
-	 * @return array<string, string>
-	 */
-	public static function attributes(mixed $attrs): array
-	{
-		$extra = [];
-		foreach (is_array($attrs) ? $attrs : [] as $name => $value) {
-			if (is_string($name) && preg_match('/^(?:(?:data|aria)-[a-z0-9-]+|id)$/', $name) && is_scalar($value)) {
-				$extra[$name] = (string)$value;
-			}
-		}
-		return $extra;
 	}
 
 	/**

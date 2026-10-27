@@ -53,7 +53,7 @@ if ($embed !== null) :
 	$extraAttrs = $extra ? ' ' . attr($extra) : '';
 	?>
 	<?php if (!$active) : ?>
-	<?php // Switched off: a plain link to the provider. Loads nothing, breaks nothing. ?>
+	<?php // Switched off: a plain link to the provider. Loads nothing, breaks nothing.?>
 	<?php if ($target = $embed->target('go')) : ?>
 <a class="shoji-link" href="<?= esc($target) ?>" rel="noopener"><?= esc($embed->title ?? $t('open', $names)) ?></a>
 	<?php endif ?>

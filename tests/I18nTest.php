@@ -16,12 +16,6 @@ use Sayamaapps\Shoji\I18n;
 #[CoversClass(I18n::class)]
 final class I18nTest extends TestCase
 {
-	/** The table of translations/<language>.php. */
-	private function table(string $language): array
-	{
-		return require dirname(__DIR__) . '/translations/' . $language . '.php';
-	}
-
 	/** Placeholder names of a text, sorted. */
 	private function placeholders(string $text): array
 	{
@@ -29,6 +23,12 @@ final class I18nTest extends TestCase
 		$names = array_unique($m[1]);
 		sort($names);
 		return $names;
+	}
+
+	/** The table of translations/<language>.php. */
+	private function table(string $language): array
+	{
+		return require dirname(__DIR__) . '/translations/' . $language . '.php';
 	}
 
 	public function testEveryLanguageHasTheKeysAndPlaceholdersOfEnglish(): void
@@ -46,6 +46,21 @@ final class I18nTest extends TestCase
 		}
 	}
 
+	public function testOverrides(): void
+	{
+		// shoji.texts: flat keys for every language, the language's own table wins
+		I18n::setLanguage('de');
+		I18n::setOverrides(['privacy' => 'Datenschutz', 'de' => ['note.video' => 'Erst nach Deinem Klick lädt {name}.'], 'en' => ['privacy' => 'Privacy']]);
+		expect('Datenschutz', I18n::text('privacy'), 'flat override');
+		expect('Erst nach Deinem Klick lädt YouTube.', I18n::text('note.video', ['name' => 'YouTube', 'company' => 'Google']), 'per-language override with placeholders');
+		I18n::setLanguage('en');
+		I18n::setOverrides(['privacy' => 'Datenschutz', 'en' => ['privacy' => 'Privacy']]);
+		expect('Privacy', I18n::text('privacy'), 'language table beats flat key');
+		I18n::setOverrides(['privacy' => ['not a string']]);
+		holds(is_string(I18n::text('privacy')) && I18n::text('privacy') !== '', 'non-string override ignored');
+		I18n::setOverrides(null);
+	}
+
 	public function testTheTextsAreRegisteredUnderTheNewAndTheOldKey(): void
 	{
 		$translations = I18n::translations();
@@ -60,20 +75,5 @@ final class I18nTest extends TestCase
 		I18n::setLanguage('fr');
 		expect('en', I18n::language(), 'unknown language falls back to English');
 		I18n::setLanguage('en');
-	}
-
-	public function testOverrides(): void
-	{
-		// shoji.texts: flat keys for every language, the language's own table wins
-		I18n::setLanguage('de');
-		I18n::setOverrides(['privacy' => 'Datenschutz', 'de' => ['note.video' => 'Erst nach Deinem Klick lädt {name}.'], 'en' => ['privacy' => 'Privacy']]);
-		expect('Datenschutz', I18n::text('privacy'), 'flat override');
-		expect('Erst nach Deinem Klick lädt YouTube.', I18n::text('note.video', ['name' => 'YouTube', 'company' => 'Google']), 'per-language override with placeholders');
-		I18n::setLanguage('en');
-		I18n::setOverrides(['privacy' => 'Datenschutz', 'en' => ['privacy' => 'Privacy']]);
-		expect('Privacy', I18n::text('privacy'), 'language table beats flat key');
-		I18n::setOverrides(['privacy' => ['not a string']]);
-		holds(is_string(I18n::text('privacy')) && I18n::text('privacy') !== '', 'non-string override ignored');
-		I18n::setOverrides(null);
 	}
 }
