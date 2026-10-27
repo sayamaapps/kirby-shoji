@@ -65,9 +65,20 @@
     },
     "scripts": {
         "analyze:phpmd": "vendor/bin/phpmd src,config,index.php,legacy.php,autoload.php github phpmd.xml.dist",
+        "analyze:platform": "@composer check-platform-reqs",
         "analyze:psalm": "vendor/bin/psalm",
         "analyze:require-checker": "vendor/bin/composer-require-checker check --config-file=config/tools/composer-require-checker.json composer.json",
         "analyze:unused": "vendor/bin/composer-unused --configuration=config/tools/composer-unused.php",
+        "ci": [
+            "@composer validate --strict --no-check-version --no-check-all",
+            "@normalize:check",
+            "@analyze:require-checker",
+            "@analyze:unused",
+            "@analyze:platform",
+            "@analyze:psalm",
+            "@analyze:phpmd",
+            "@test"
+        ],
         "normalize:check": "@composer normalize --dry-run",
         "test": "vendor/bin/phpunit"
     }
