@@ -5,7 +5,7 @@ use Sayamaapps\Shoji\Options;
 
 /**
  * Options are read as sayamaapps.shoji.<key>, with the 1.x spelling shoji.<key>
- * as fallback. The fallback is reported as a deprecation in debug mode.
+ * as fallback. The fallback logs nothing, not even in debug mode.
  */
 #[CoversClass(Options::class)]
 final class OptionsPrefixTest extends ShojiTestCase
@@ -29,7 +29,7 @@ final class OptionsPrefixTest extends ShojiTestCase
 		$this->assertSame('en', Options::language($kirby), 'unset: default language');
 	}
 
-	public function testOldSpellingStillWorksAndIsDeprecated(): void
+	public function testOldSpellingStillWorksWithoutANotice(): void
 	{
 		$deprecations = [];
 		set_error_handler(function (int $level, string $message) use (&$deprecations): bool {
@@ -45,6 +45,6 @@ final class OptionsPrefixTest extends ShojiTestCase
 			restore_error_handler();
 		}
 
-		$this->assertSame(['Shoji: shoji.active is deprecated, use sayamaapps.shoji.active'], $deprecations);
+		$this->assertSame([], $deprecations, 'no runtime notice for the 1.x spelling');
 	}
 }

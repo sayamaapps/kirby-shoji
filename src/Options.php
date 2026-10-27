@@ -4,7 +4,6 @@ namespace Sayamaapps\Shoji;
 
 use Closure;
 use Kirby\Cms\App;
-use Kirby\Cms\Helpers;
 use Sudare\Sudare;
 use WeakMap;
 
@@ -49,7 +48,7 @@ class Options
 
 	/**
 	 * Reads `sayamaapps.shoji.<key>`. The 1.x spelling `shoji.<key>` still works as a
-	 * fallback and is reported as a deprecation (README, Deprecations).
+	 * fallback. It is documented as deprecated (README, Deprecations) and logs nothing.
 	 */
 	public static function get(App $kirby, string $key, mixed $default = null): mixed
 	{
@@ -58,15 +57,7 @@ class Options
 			return $value;
 		}
 
-		$legacy = $kirby->option(self::PREFIX . $key);
-		if ($legacy !== null) {
-			Helpers::deprecated(
-				'Shoji: shoji.' . $key . ' is deprecated, use ' . self::CURRENT_PREFIX . $key,
-				'option-prefix'
-			);
-		}
-
-		return $legacy ?? $default;
+		return $kirby->option(self::PREFIX . $key) ?? $default;
 	}
 
 	/**
