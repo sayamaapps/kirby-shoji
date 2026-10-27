@@ -13,6 +13,7 @@ return [
 	'sayamaapps\\shoji\\i18n' => 'src/I18n.php',
 	'sayamaapps\\shoji\\options' => 'src/Options.php',
 	'sayamaapps\\shoji\\providers' => 'src/Providers.php',
+	'sayamaapps\\shoji\\quiet' => 'src/Quiet.php',
 	'sayamaapps\\shoji\\signer' => 'src/Signer.php',
 	'sayamaapps\\shoji\\thumbs' => 'src/Thumbs.php',
 ];

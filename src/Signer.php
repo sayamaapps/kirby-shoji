@@ -52,22 +52,22 @@ class Signer
 	public static function storedSecret(string $directory): string
 	{
 		$file = $directory . '/secret';
-		$secret = is_file($file) ? trim((string)@file_get_contents($file)) : '';
+		$secret = is_file($file) ? trim((string)Quiet::run(fn () => file_get_contents($file))) : '';
 		if (strlen($secret) >= 32) {
 			return $secret;
 		}
 		$secret = bin2hex(random_bytes(32));
 		if (!is_dir($directory)) {
-			@mkdir($directory, 0700, true);
+			Quiet::run(fn () => mkdir($directory, 0700, true));
 		}
-		$written = @file_put_contents($file . '.tmp', $secret, LOCK_EX) === strlen($secret) &&
-			@chmod($file . '.tmp', 0600) &&
-			@rename($file . '.tmp', $file);
+		$written = Quiet::run(fn () => file_put_contents($file . '.tmp', $secret, LOCK_EX)) === strlen($secret) &&
+			Quiet::run(fn () => chmod($file . '.tmp', 0600)) &&
+			Quiet::run(fn () => rename($file . '.tmp', $file));
 		if ($written) {
 			// Two first requests at once: the last rename wins, both use the file.
-			return trim((string)@file_get_contents($file)) ?: $secret;
+			return trim((string)Quiet::run(fn () => file_get_contents($file))) ?: $secret;
 		}
-		@unlink($file . '.tmp');
+		Quiet::run(fn () => unlink($file . '.tmp'));
 		error_log('Shoji: cannot write ' . $file . ' — placeholders will not open until shoji.secret is set or the storage directory is writable.');
 		return $secret;
 	}

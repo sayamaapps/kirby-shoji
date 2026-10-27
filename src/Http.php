@@ -66,7 +66,7 @@ class Http
 			'ignore_errors'   => true,
 			'user_agent'      => self::USER_AGENT,
 		]]);
-		$body = @file_get_contents($url, false, $context, 0, self::MAX_BYTES + 1);
+		$body = Quiet::run(fn () => file_get_contents($url, false, $context, 0, self::MAX_BYTES + 1));
 		// The last status line counts (after redirects).
 		$status = 0;
 		// http_get_last_response_headers() since PHP 8.4. The magic local

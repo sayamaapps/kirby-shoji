@@ -11,8 +11,6 @@
 		<exclude name="StaticAccess" />
 		<!-- The assignment in a condition reads as "match, then use" in the lookups of Providers and Thumbs. -->
 		<exclude name="IfStatementAssignment" />
-		<!-- The cache and secret writes are best-effort: a failed write is detected by its return value and logged. -->
-		<exclude name="ErrorControlOperator" />
 	</rule>
 
 	<!-- codesize: listed rule by rule, so the threshold below replaces the default. -->

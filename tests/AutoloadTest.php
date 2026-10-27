@@ -24,8 +24,8 @@ final class AutoloadTest extends TestCase
 		require_once dirname(__DIR__) . '/legacy.php';
 
 		foreach (require dirname(__DIR__) . '/autoload.php' as $class => $path) {
-			if ($class === 'sayamaapps\\shoji\\api') {
-				continue; // Api is new: it has no 1.x name
+			if (in_array($class, ['sayamaapps\\shoji\\api', 'sayamaapps\\shoji\\quiet'], true)) {
+				continue; // Api and Quiet are new: they have no 1.x name
 			}
 			$short = substr($class, strlen('sayamaapps\\shoji\\'));
 			$this->assertSame(

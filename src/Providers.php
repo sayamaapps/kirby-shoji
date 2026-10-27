@@ -373,10 +373,10 @@ class Providers
 	/** Problems with the id, the match, the urlParams and the snippet of a definition, or null. */
 	private static function patternProblem(array $definition, bool $html): string|null
 	{
-		if (@preg_match($definition['id'], '') === false) {
+		if (Quiet::run(fn () => preg_match($definition['id'], '')) === false) {
 			return "'id' is no valid regular expression";
 		}
-		if (isset($definition['match']) && (!is_string($definition['match']) || $definition['match'] === '' || @preg_match($definition['match'], '') === false)) {
+		if (isset($definition['match']) && (!is_string($definition['match']) || $definition['match'] === '' || Quiet::run(fn () => preg_match($definition['match'], '')) === false)) {
 			return "'match' is no valid regular expression";
 		}
 		if (isset($definition['urlParams']) && !$definition['urlParams'] instanceof Closure) {

@@ -93,7 +93,7 @@ class Thumbs
 		$fresh = $this->fetch($embed);
 		if ($fresh === null) {
 			if ($cached !== null) {
-				@touch($cached['file'], $now); // try again in 30 days, keep showing the old one
+				Quiet::run(fn () => touch($cached['file'], $now)); // try again in 30 days, keep showing the old one
 				return $cached;
 			}
 			$this->write($base . '.miss', $missKey, $now);
@@ -103,10 +103,10 @@ class Thumbs
 		[$bytes, $extension] = $fresh;
 		foreach (array_keys(self::TYPES) as $other) {
 			if ($other !== $extension) {
-				@unlink($base . '.' . $other);
+				Quiet::run(fn () => unlink($base . '.' . $other)); // most are missing
 			}
 		}
-		@unlink($base . '.miss');
+		Quiet::run(fn () => unlink($base . '.miss'));
 		if (!$this->write($base . '.' . $extension, $bytes, $now)) {
 			error_log('Shoji: cannot write the preview image cache in ' . $this->directory);
 			return null;
@@ -128,15 +128,15 @@ class Thumbs
 	private function write(string $file, string $bytes, int $time): bool
 	{
 		$directory = dirname($file);
-		if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+		if (!is_dir($directory) && !Quiet::run(fn () => mkdir($directory, 0755, true)) && !is_dir($directory)) {
 			return false;
 		}
 		$tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-		if (@file_put_contents($tmp, $bytes, LOCK_EX) !== strlen($bytes) || !@rename($tmp, $file)) {
-			@unlink($tmp);
+		if (Quiet::run(fn () => file_put_contents($tmp, $bytes, LOCK_EX)) !== strlen($bytes) || !Quiet::run(fn () => rename($tmp, $file))) {
+			Quiet::run(fn () => unlink($tmp));
 			return false;
 		}
-		@touch($file, $time);
+		Quiet::run(fn () => touch($file, $time));
 		return true;
 	}
 }
