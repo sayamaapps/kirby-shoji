@@ -38,6 +38,10 @@ class Api
 	}
 
 	/**
+	 * Kirby's core tag definitions, read by path: once the plugin overrides the
+	 * `video` tag, Kirby's public API no longer returns the original. Deliberate
+	 * (README, design notes); tests/CoreFilesTest.php checks the file.
+	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private static function coreTags(App $kirby): array

@@ -17,6 +17,8 @@ $kirby = $block->kirby();
 $content = $block->location()->value() !== 'kirby' ? Api::video($kirby, $block->url()->value()) : null;
 
 if ($content === null) {
+	// Kirby's own block, read by path: this snippet replaces the core one, so
+	// the public API no longer renders it. README, design notes; CoreFilesTest.
 	include $kirby->root('kirby') . '/config/blocks/video/video.php';
 	return;
 }
