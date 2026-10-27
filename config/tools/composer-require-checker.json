@@ -25,6 +25,7 @@
 		"Kirby\\Cms\\Page",
 		"Kirby\\Exception\\Exception",
 		"Kirby\\Filesystem\\F",
+		"Kirby\\Toolkit\\I18n",
 		"Kirby\\Http\\Response",
 		"Kirby\\Text\\KirbyTag",
 		"Sudare\\Sudare",
