@@ -78,7 +78,9 @@ if ($open && $embed->kind() === 'html') : ?>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
 </div>
 <?php
-	return; elseif ($open) : ?>
+	return;
+?>
+<?php elseif ($open) : ?>
 <div class="<?= esc($classes . ' shoji-opened') ?>" data-shoji-provider="<?= esc($embed->provider) ?>"<?= $extra ? ' ' . attr($extra) : '' ?>>
   <?php foreach ($embed->scriptUrls() as $script) : ?><script src="<?= esc($script) ?>" defer></script><?php endforeach ?>
   <iframe class="<?= $frameClassAttr ?>" src="<?= $frameSrc ?>" title="<?= esc($frameTitle) ?>" allow="<?= $frameAllow ?>" allowfullscreen loading="lazy"></iframe>
