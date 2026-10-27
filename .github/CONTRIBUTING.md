@@ -18,7 +18,13 @@ To try the plugin on a site, link or copy the folder to `site/plugins/shoji/`.
 
 ## Checks
 
-Run these before you open a pull request. CI runs the same checks on PHP 8.2 to 8.5.
+Run this before you open a pull request. It runs the Composer checks in the order of the CI analysis job, and the tests. CI runs the same checks on PHP 8.2 to 8.5.
+
+```sh
+composer ci
+```
+
+The steps, one by one:
 
 ```sh
 composer test                     # PHPUnit
@@ -26,8 +32,11 @@ composer analyze:psalm            # Psalm
 composer analyze:phpmd            # PHP Mess Detector
 composer analyze:unused           # unused Composer packages
 composer analyze:require-checker  # undeclared dependencies
+composer analyze:platform         # platform requirements
 composer normalize:check          # composer.json layout
 ```
+
+Duplicated code is checked with phpcpd, installed globally (its Symfony Console dependency conflicts with the other tools). CI runs it as `phpcpd --fuzzy --exclude tests --exclude vendor .`.
 
 Code style is checked with PHP-CS-Fixer and the Kirby rule set (`getkirby/php-cs`). The package is installed globally, because it needs PHP 8.3 or newer and this package supports PHP 8.2:
 
