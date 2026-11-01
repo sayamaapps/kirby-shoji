@@ -11,6 +11,23 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [1.5.0] — 2026-11-01
+
+### Added
+
+- **Campaign tag of the visit for Digistore24 order forms.** The option
+  `campaignParam` names the request parameter with the campaign tag, for example
+  `'cam'` (`utm_campaign` wins). A Digistore24 order form rendered on such a
+  page takes the tag as `ds24tr`, the vendor's tracking key, in its signed
+  address, unless the form has an affiliate (`aff`) or a `ds24tr` already; an
+  own `cam` is dropped, because Digistore24 reads `cam` only as the campaign of
+  an affiliate, so an own tag there never reaches the vendor's purchase data.
+  Without a visit tag a pasted `cam` without `aff` becomes `ds24tr` the same
+  way. A pasted address may now carry `ds24tr`. Providers get the optional
+  field `campaign` (a closure) for this; `Embed::campaign($kirby)` returns the
+  tag of the request. Nothing loads earlier; the redirect targets are unchanged
+  apart from the parameter.
+
 ## [1.4.0] — 2026-10-27
 
 ### Deprecated

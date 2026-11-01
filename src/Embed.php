@@ -50,6 +50,26 @@ class Embed
 	}
 
 	/**
+	 * The campaign tag of this request (since 1.5.0): `utm_campaign`, else the
+	 * parameter named in the option `campaignParam` (letters, digits, `_`, `-`,
+	 * up to 32 characters); the value cleaned the same way and capped at 50
+	 * characters, '' without a tag. A page with a query string is never cached,
+	 * so the tag reaches the signed addresses of this render only.
+	 */
+	public static function campaign(App $kirby): string
+	{
+		$clean = static fn (mixed $value): string => is_string($value) ? substr((string)preg_replace('/[^A-Za-z0-9_-]/', '', $value), 0, 50) : '';
+		$query = $kirby->request()->query();
+		$tag = $clean($query->get('utm_campaign'));
+		$param = Options::get($kirby, 'campaignParam');
+		if ($tag === '' && is_string($param) && preg_match('/^[A-Za-z0-9_-]{1,32}$/D', $param) === 1) {
+			$tag = $clean($query->get($param));
+		}
+
+		return $tag;
+	}
+
+	/**
 	 * The company that learns the visitor's IP address, as the note names it.
 	 */
 	public function company(): string
@@ -194,7 +214,13 @@ class Embed
 			return null;
 		}
 		$title = $title !== null && trim($title) !== '' ? trim($title) : null;
-		return new self($kirby, $provider, $definition, $id, Providers::params($params), $title);
+		$params = Providers::params($params);
+		if (($definition['campaign'] ?? null) instanceof Closure) {
+			// Also with an empty tag: the provider may normalise what it carries.
+			$params = Providers::params($definition['campaign']($params, self::campaign($kirby)));
+		}
+
+		return new self($kirby, $provider, $definition, $id, $params, $title);
 	}
 
 	/**
