@@ -114,6 +114,16 @@ final class ProvidersTest extends TestCase
 		expect([], $urlParams($ds, 'https://www.digistore24.com/product/123456'), 'Digistore plain');
 		expect([], $urlParams($ds, 'https://www.digistore24.com/redir/123456'), 'Digistore redir without more');
 		expect(['aff' => 'a b&c'], $urlParams($ds, 'https://www.digistore24.com/product/123456?aff=a%20b%26c'), 'Digistore values decoded');
+		expect(['ds24tr' => 'newsletter'], $urlParams($ds, 'https://www.digistore24.com/product/123456?ds24tr=newsletter'), 'Digistore tracking key carried');
+		// How the form takes the campaign tag of the visit (option campaignParam), see Providers::digistoreCampaign().
+		$campaign = $ds['campaign'];
+		expect(['ds24tr' => 'social-x'], $campaign([], 'social-x'), 'campaign: without an affiliate the tag goes into ds24tr');
+		expect(['form' => '78901', 'ds24tr' => 'social-x'], $campaign(['form' => '78901', 'cam' => 'pasted'], 'social-x'), 'campaign: an own cam is dropped, the visit wins');
+		expect(['ds24tr' => 'pasted'], $campaign(['cam' => 'pasted'], ''), 'campaign: without a visit tag a pasted cam becomes ds24tr');
+		expect(['ds24tr' => 'newsletter'], $campaign(['ds24tr' => 'newsletter', 'cam' => 'pasted'], 'social-x'), 'campaign: an existing ds24tr is never replaced');
+		expect(['aff' => 'partner', 'cam' => 'story'], $campaign(['aff' => 'partner', 'cam' => 'story'], 'social-x'), 'campaign: an affiliate form stays, cam belongs to the affiliate');
+		expect(['aff' => 'partner'], $campaign(['aff' => 'partner'], 'social-x'), 'campaign: no ds24tr for an affiliate form');
+		expect([], $campaign([], ''), 'campaign: nothing without a tag');
 		foreach ([
 			'https://www.digistore24.com/redir/123456/partner/summer', 'https://www.digistore24.com/redir/123456/78901', // path of a redir address: other things than a form
 			'https://www.digistore24.com/product/123456/abc', 'https://www.digistore24.com/product/123456/78901/2', 'https://www.digistore24.com/product/123456/12345678901',
@@ -172,6 +182,7 @@ final class ProvidersTest extends TestCase
 		expect('YouTube', $custom['youtube']['name'], 'other fields kept');
 
 		expect("'urlParams' must be a closure", Providers::problem(['urlParams' => 'nope'] + $vimeo), 'urlParams must be a closure');
+		expect("'campaign' must be a closure", Providers::problem(['campaign' => 'cam'] + $vimeo), 'campaign must be a closure');
 
 		// Kind html: the site's snippet instead of an iframe address, scripts and stylesheets as lists
 		$html = ['name' => 'Brevo', 'company' => 'Brevo', 'kind' => 'html', 'id' => '/^[a-z]+$/', 'snippet' => 'forms/{id}',

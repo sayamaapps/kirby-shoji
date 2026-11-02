@@ -181,6 +181,27 @@ final class KirbyTest extends ShojiTestCase
 		$ds = $frameOf('/frame/digistore/123456');
 		holds(str_contains($ds, 'aff%3Dpartner'), 'parameters travel in the signed own address');
 		expect('https://www.digistore24.com/product/123456/78901?aff=partner', $call($ds, $on)->header('Location'), 'digistore frame with form and affiliate');
+		// The campaign tag of the visit (option campaignParam) reaches an own order form as ds24tr, never an affiliate's.
+		$tagged = $on + ['sayamaapps.shoji.campaignParam' => 'cam'];
+		$visit = $app($tagged, ['cam' => 'social-x']);
+		expect(['ds24tr' => 'social-x'], \Sayamaapps\Shoji\Embed::make($visit, 'digistore', '654321', ['cam' => 'pasted'])->params, 'campaign: the visit tag as ds24tr, the pasted cam dropped');
+		expect('https://www.digistore24.com/product/654321?ds24tr=social-x', \Sayamaapps\Shoji\Embed::make($visit, 'digistore', '654321')->target('frame'), 'campaign: in the frame address');
+		expect(['aff' => 'partner', 'form' => '78901'], \Sayamaapps\Shoji\Embed::make($visit, 'digistore', '123456', ['form' => '78901', 'aff' => 'partner'])->params, 'campaign: an affiliate form stays');
+		expect(['ds24tr' => 'autumn'], \Sayamaapps\Shoji\Embed::make($app($tagged, ['cam' => 'social-x', 'utm_campaign' => 'autumn']), 'digistore', '654321')->params, 'campaign: utm_campaign wins');
+		expect(['ds24tr' => 'bxyb'], \Sayamaapps\Shoji\Embed::make($app($tagged, ['cam' => '<b>x y</b>']), 'digistore', '654321')->params, 'campaign: cleaned like a utm value');
+		expect([], \Sayamaapps\Shoji\Embed::make($app($tagged, ['cam' => ['x']]), 'digistore', '654321')->params, 'campaign: an array value is no tag');
+		// A partner's visit (aff in the page address) carries nothing: the partner's tag must not become the site's own ds24tr.
+		$partner = $app($tagged, ['aff' => 'partner', 'cam' => 'pkampagne']);
+		expect([], \Sayamaapps\Shoji\Embed::make($partner, 'digistore', '654321')->params, 'campaign: a partner\'s visit carries nothing');
+		expect([], \Sayamaapps\Shoji\Embed::make($app($tagged, ['aff' => 'partner', 'utm_campaign' => 'pkampagne']), 'digistore', '654321')->params, 'campaign: a partner\'s visit with utm_campaign carries nothing');
+		expect(['ds24tr' => 'pasted'], \Sayamaapps\Shoji\Embed::make($partner, 'digistore', '654321', ['cam' => 'pasted'])->params, 'campaign: on a partner\'s visit a pasted cam is the form\'s own and becomes ds24tr');
+		expect(['aff' => 'partner', 'form' => '78901'], \Sayamaapps\Shoji\Embed::make($partner, 'digistore', '123456', ['form' => '78901', 'aff' => 'partner'])->params, 'campaign: on a partner\'s visit an affiliate form stays');
+		expect(['ds24tr' => 'pasted'], \Sayamaapps\Shoji\Embed::make($app($on, ['cam' => 'social-x']), 'digistore', '654321', ['cam' => 'pasted'])->params, 'campaign: without campaignParam the visit is ignored, a pasted cam becomes ds24tr');
+		expect([], \Sayamaapps\Shoji\Embed::make($app(['sayamaapps.shoji.campaignParam' => 'c m'] + $on, ['cam' => 'social-x']), 'digistore', '654321')->params, 'campaign: an unusable parameter name is ignored');
+		$visitHtml = (string)$visit->page('home')->render();
+		$visitDs = current(array_filter($attrs($visitHtml, 'data-shoji-frame'), fn ($u) => str_contains($u, '/frame/digistore/123456')));
+		holds(!str_contains($visitDs, 'ds24tr'), 'campaign: the affiliate form on the page gets no ds24tr');
+		expect('https://www.digistore24.com/product/123456/78901?aff=partner', $call($visitDs, $tagged)->header('Location'), 'campaign: affiliate redirect unchanged');
 		$script = $attrs($html, 'data-shoji-script')[0];
 		expect('https://www.digistore24-scripts.com/service/digistore.js', $call($script, $on)->header('Location'), 'provider script');
 		$go = current(array_filter($links, fn ($u) => str_contains($u, '/go/vimeo/')));
@@ -582,7 +603,7 @@ final class KirbyTest extends ShojiTestCase
 			'https://vimeo.com/123456789?h=abcdef1234' => ['https://player.vimeo.com/video/123456789?autoplay=1&dnt=1&h=abcdef1234', 'https://vimeo.com/123456789/abcdef1234', $oembed('https://vimeo.com/123456789/abcdef1234')],
 			'https://vimeo.com/76979871' => ['https://player.vimeo.com/video/76979871?autoplay=1&dnt=1', 'https://vimeo.com/76979871', $oembed('https://vimeo.com/76979871')],
 			'https://www.digistore24.com/product/123456/78901?aff=partner&cam=summer' => ['https://www.digistore24.com/product/123456/78901?aff=partner&cam=summer', 'https://www.digistore24.com/product/123456/78901?aff=partner&cam=summer', null],
-			'https://www.digistore24.com/product/123456?cam=summer' => ['https://www.digistore24.com/product/123456?cam=summer', 'https://www.digistore24.com/product/123456?cam=summer', null],
+			'https://www.digistore24.com/product/123456?ds24tr=summer' => ['https://www.digistore24.com/product/123456?ds24tr=summer', 'https://www.digistore24.com/product/123456?ds24tr=summer', null],
 			'https://www.digistore24.com/product/123456' => ['https://www.digistore24.com/product/123456', 'https://www.digistore24.com/product/123456', null],
 			'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1234567890abcdef' => ['https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg'],
 		];

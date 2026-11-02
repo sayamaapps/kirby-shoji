@@ -21,6 +21,10 @@ use Closure;
  *                                          the id (Vimeo's h, Digistore24's form, aff, cam); null: a
  *                                          form of the address this provider cannot carry, so it is
  *                                          not taken over (the next provider is tried)
+ *   'campaign'   => fn (array $params, string $campaign): array
+ *                                          optional: how the provider takes the campaign tag of the
+ *                                          visit (shoji.campaignParam); called on render, also with
+ *                                          an empty tag, so it may normalise the parameters
  *   'embed'      => 'https://…/{id}',      the iframe address (not for kind 'html')
  *   'snippet'    => 'forms/{id}',          kind 'html' only: the site's Kirby snippet with the markup
  *   'link'       => 'https://…/{id}',      optional: the plain link (without JavaScript), default: embed
@@ -242,7 +246,7 @@ class Providers
 				'kind'    => 'form',
 				'id'      => '/^\d{1,10}$/',
 				'match'   => '~digistore24\.com/(?:product|redir)/(\d{1,10})(?!\d)~i',
-				// product/{id}/{form}: the order form; ?aff= and ?cam=: affiliate and campaign.
+				// product/{id}/{form}: the order form; ?aff=, ?cam=, ?ds24tr=: affiliate, its campaign, vendor tracking key.
 				// redir/{id}/… carries other things in its path (affiliate, campaign): not taken over.
 				'urlParams' => static function (string $url): array|null {
 					if (preg_match('~digistore24\.com/(product|redir)/\d{1,10}((?:/[^/?#]*)*)~i', $url, $m) !== 1) {
@@ -256,7 +260,7 @@ class Providers
 						return null;
 					}
 					$query = self::query($url);
-					foreach (['aff', 'cam'] as $name) {
+					foreach (['aff', 'cam', 'ds24tr'] as $name) {
 						$value = $query[$name] ?? '';
 						if ($value === '') {
 							continue;
@@ -268,12 +272,44 @@ class Providers
 					}
 					return $params;
 				},
+				'campaign' => static fn (array $params, string $campaign): array => self::digistoreCampaign($params, $campaign),
 				// {/form}: the order form id, as in …/product/123456/78901
 				'embed'   => 'https://www.digistore24.com/product/{id}{/form}',
 				'script'  => 'https://www.digistore24-scripts.com/service/digistore.js',
 				'allow'   => 'payment',
 			],
 		];
+	}
+
+	/**
+	 * Keeps only well-formed parameters: names like `form` or `aff`, scalar
+	 * values up to 200 characters. Sorted by name, so the signature does not
+	 * depend on the order a template passed them in.
+	 *
+	 * @return array<string,string>
+	 */
+	/**
+	 * How a Digistore24 order form takes a campaign tag (since 1.5.0). Digistore24
+	 * reads `cam` only as the campaign of an affiliate (`aff`), so a form with
+	 * `aff` stays as it is: `cam` belongs to the affiliate. Without `aff` the
+	 * tag goes into `ds24tr`, the vendor's tracking key, unless one is there
+	 * already; an own `cam` is dropped, so an old affiliate cookie cannot be
+	 * credited with it. The tag of the visit wins over a `cam` the author
+	 * pasted; without a visit tag the pasted `cam` becomes `ds24tr`.
+	 */
+	public static function digistoreCampaign(array $params, string $campaign): array
+	{
+		if (isset($params['aff'])) {
+			return $params;
+		}
+		$pasted = $params['cam'] ?? null;
+		unset($params['cam']);
+		$tag = $campaign !== '' ? $campaign : $pasted;
+		if (!isset($params['ds24tr']) && is_string($tag) && $tag !== '') {
+			$params['ds24tr'] = $tag;
+		}
+
+		return $params;
 	}
 
 	/**
@@ -344,13 +380,6 @@ class Providers
 		return $open;
 	}
 
-	/**
-	 * Keeps only well-formed parameters: names like `form` or `aff`, scalar
-	 * values up to 200 characters. Sorted by name, so the signature does not
-	 * depend on the order a template passed them in.
-	 *
-	 * @return array<string,string>
-	 */
 	public static function params(mixed $params): array
 	{
 		$clean = [];
@@ -385,6 +414,9 @@ class Providers
 		}
 		if (isset($definition['urlParams']) && !$definition['urlParams'] instanceof Closure) {
 			return "'urlParams' must be a closure";
+		}
+		if (isset($definition['campaign']) && !$definition['campaign'] instanceof Closure) {
+			return "'campaign' must be a closure";
 		}
 		if ($html && !preg_match(self::SNIPPET, str_replace('{id}', 'id', (string)$definition['snippet']))) {
 			return "'snippet' must be a snippet name like 'forms/{id}'";
