@@ -190,6 +190,12 @@ final class KirbyTest extends ShojiTestCase
 		expect(['ds24tr' => 'autumn'], \Sayamaapps\Shoji\Embed::make($app($tagged, ['cam' => 'social-x', 'utm_campaign' => 'autumn']), 'digistore', '654321')->params, 'campaign: utm_campaign wins');
 		expect(['ds24tr' => 'bxyb'], \Sayamaapps\Shoji\Embed::make($app($tagged, ['cam' => '<b>x y</b>']), 'digistore', '654321')->params, 'campaign: cleaned like a utm value');
 		expect([], \Sayamaapps\Shoji\Embed::make($app($tagged, ['cam' => ['x']]), 'digistore', '654321')->params, 'campaign: an array value is no tag');
+		// A partner's visit (aff in the page address) carries nothing: the partner's tag must not become the site's own ds24tr.
+		$partner = $app($tagged, ['aff' => 'partner', 'cam' => 'pkampagne']);
+		expect([], \Sayamaapps\Shoji\Embed::make($partner, 'digistore', '654321')->params, 'campaign: a partner\'s visit carries nothing');
+		expect([], \Sayamaapps\Shoji\Embed::make($app($tagged, ['aff' => 'partner', 'utm_campaign' => 'pkampagne']), 'digistore', '654321')->params, 'campaign: a partner\'s visit with utm_campaign carries nothing');
+		expect(['ds24tr' => 'pasted'], \Sayamaapps\Shoji\Embed::make($partner, 'digistore', '654321', ['cam' => 'pasted'])->params, 'campaign: on a partner\'s visit a pasted cam is the form\'s own and becomes ds24tr');
+		expect(['aff' => 'partner', 'form' => '78901'], \Sayamaapps\Shoji\Embed::make($partner, 'digistore', '123456', ['form' => '78901', 'aff' => 'partner'])->params, 'campaign: on a partner\'s visit an affiliate form stays');
 		expect(['ds24tr' => 'pasted'], \Sayamaapps\Shoji\Embed::make($app($on, ['cam' => 'social-x']), 'digistore', '654321', ['cam' => 'pasted'])->params, 'campaign: without campaignParam the visit is ignored, a pasted cam becomes ds24tr');
 		expect([], \Sayamaapps\Shoji\Embed::make($app(['sayamaapps.shoji.campaignParam' => 'c m'] + $on, ['cam' => 'social-x']), 'digistore', '654321')->params, 'campaign: an unusable parameter name is ignored');
 		$visitHtml = (string)$visit->page('home')->render();

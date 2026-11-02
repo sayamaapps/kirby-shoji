@@ -121,7 +121,7 @@ All keys are read as `sayamaapps.shoji.<name>`, flat or nested. `null` means "no
 | `providers` (`shoji.providers`) | built-in | Add a provider, change one field of a built-in one, or remove one with `false`. Fields: see below. |
 | `url` (`shoji.url`) | — | Closure `fn (string $url, Sayamaapps\Shoji\Embed $embed, string $kind): string`, called for each redirect (`frame`, `go`, `script`, `style`). Must return `https`. |
 | `script` (`shoji.script`) | `true` | `false`: no script tag; bundle `assets/shoji.js` yourself. |
-| `campaignParam` (`shoji.campaignParam`) | — | Request parameter with the campaign tag of the visit, for example `'cam'` (`utm_campaign` wins). A Digistore24 order form then takes the tag as `ds24tr`, the vendor's tracking key, unless the form has an affiliate (`aff`) or a `ds24tr` already; an own `cam` is dropped, because Digistore24 reads `cam` only as the campaign of an affiliate. See the provider field `campaign`. |
+| `campaignParam` (`shoji.campaignParam`) | — | Request parameter with the campaign tag of the visit, for example `'cam'` (`utm_campaign` wins). A Digistore24 order form then takes the tag as `ds24tr`, the vendor's tracking key, unless the form has an affiliate (`aff`) or a `ds24tr` already; an own `cam` is dropped, because Digistore24 reads `cam` only as the campaign of an affiliate. A page address with `aff=` is a partner's visit: its tag is not the site's own, nothing is carried on. See the provider field `campaign`. |
 | `secret` (`shoji.secret`) | random | Signs Shoji's addresses, 16+ characters. Unset: stored in `storage/shoji/secret`. Set it when several servers share a domain. |
 
 ### Providers

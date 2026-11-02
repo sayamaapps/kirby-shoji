@@ -53,13 +53,18 @@ class Embed
 	 * The campaign tag of this request (since 1.5.0): `utm_campaign`, else the
 	 * parameter named in the option `campaignParam` (letters, digits, `_`, `-`,
 	 * up to 32 characters); the value cleaned the same way and capped at 50
-	 * characters, '' without a tag. A page with a query string is never cached,
-	 * so the tag reaches the signed addresses of this render only.
+	 * characters, '' without a tag. A request with `aff` is a partner's visit:
+	 * its tag is the partner's and not the site's own, so '' as well. A page
+	 * with a query string is never cached, so the tag reaches the signed
+	 * addresses of this render only.
 	 */
 	public static function campaign(App $kirby): string
 	{
 		$clean = static fn (mixed $value): string => is_string($value) ? substr((string)preg_replace('/[^A-Za-z0-9_-]/', '', $value), 0, 50) : '';
 		$query = $kirby->request()->query();
+		if ($query->get('aff') !== null) {
+			return '';
+		}
 		$tag = $clean($query->get('utm_campaign'));
 		$param = Options::get($kirby, 'campaignParam');
 		if ($tag === '' && is_string($param) && preg_match('/^[A-Za-z0-9_-]{1,32}$/D', $param) === 1) {

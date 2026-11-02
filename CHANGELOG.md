@@ -23,7 +23,9 @@ All notable changes to this project are documented here. Versions follow
   own `cam` is dropped, because Digistore24 reads `cam` only as the campaign of
   an affiliate, so an own tag there never reaches the vendor's purchase data.
   Without a visit tag a pasted `cam` without `aff` becomes `ds24tr` the same
-  way. A pasted address may now carry `ds24tr`. Providers get the optional
+  way. A page address with `aff=` is a partner's visit: nothing is carried on,
+  so the partner's tag never reaches the vendor's purchase data as the site's
+  own. A pasted address may now carry `ds24tr`. Providers get the optional
   field `campaign` (a closure) for this; `Embed::campaign($kirby)` returns the
   tag of the request. Nothing loads earlier; the redirect targets are unchanged
   apart from the parameter.
