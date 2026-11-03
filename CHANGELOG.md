@@ -11,6 +11,27 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [1.5.1] — 2026-11-03
+
+### Fixed
+
+- **Two first requests at once no longer end up with different secrets.** Both
+  saw no `storage/shoji/secret`, the first created it and signed its addresses
+  with it, then the second replaced it with a secret of its own. The addresses
+  the first request had already put on its page stopped verifying (the routes
+  answered 404: no preview image, no player) until the page was rendered again.
+  A missing secret is now created under an exclusive lock on the new, empty
+  file `storage/shoji/secret.lock`: a request that finds no secret waits for
+  the lock, looks again and uses the secret it finds, and creates one only if
+  there still is none. The secret is written to a temporary file of its own
+  and moved into place. An existing secret is read without any lock, so the
+  lock file appears only on the first use. If the lock stays taken for five
+  seconds or cannot be opened, Shoji behaves as when the secret cannot be
+  stored: a random secret for this request only, and the usual log entry,
+  which now also names the lock file. `Signer::storedSecret()` takes an
+  optional second argument, the seconds to wait for the lock. The lock file
+  holds no data; the privacy texts are unchanged.
+
 ## [1.5.0] — 2026-11-01
 
 ### Added
