@@ -244,6 +244,7 @@ final class ProvidersTest extends TestCase
 		expect($first, Signer::storedSecret($dir), 'secret stable');
 		expect('600', substr(sprintf('%o', fileperms($dir . '/secret')), -3), 'secret file mode 0600');
 		unlink($dir . '/secret');
+		unlink($dir . '/secret.lock');
 		rmdir($dir);
 		// Cannot be stored (a file where the directory should be; works as root too): fail closed.
 		$blocker = tempnam(sys_get_temp_dir(), 'shoji-blocker');
