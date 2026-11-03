@@ -11,6 +11,28 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [1.5.2] — 2026-11-03
+
+### Fixed
+
+- **Preview images load without curl on PHP 8.2 and 8.3.** Without `ext-curl`,
+  Shoji fetches a preview image with PHP's stream wrapper. Before PHP 8.4 the
+  status of the answer was lost on that path: it was read from the variable
+  `$http_response_header`, which PHP sets only in the function that called
+  `file_get_contents()` and only where the name is written out. Shoji looked
+  for it in another function and through a name built at run time, so every
+  answer counted as "no answer" (status 0), the image
+  that had arrived was thrown away, and the failure was remembered for a day
+  as a missing preview image. PHP 8.4 and later were not affected. Shoji now
+  opens the address with `fopen()` and reads the response headers from the
+  stream (`stream_get_meta_data()`), the same way on every PHP version: no
+  version check, no `$http_response_header`, and no deprecation notice on
+  PHP 8.5. The size limit, the timeout, the redirect handling (the last status
+  line counts) and the request itself are unchanged, and so is the path with
+  curl. A site on PHP 8.2 or 8.3 without curl shows its preview images again
+  after the one-day failure memory in `storage/shoji/thumbs/` has expired, or
+  once the `.miss` files there are deleted.
+
 ## [1.5.1] — 2026-11-03
 
 ### Fixed
