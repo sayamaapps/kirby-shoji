@@ -79,18 +79,22 @@ class Http
 			'ignore_errors'   => true,
 			'user_agent'      => self::USER_AGENT,
 		]]);
-		$body = Quiet::run(fn () => file_get_contents($url, false, $context, 0, self::MAX_BYTES + 1));
+		$stream = Quiet::run(fn () => fopen($url, 'rb', false, $context));
+		if ($stream === false) {
+			return [0, ''];
+		}
+		$body = Quiet::run(fn () => stream_get_contents($stream, self::MAX_BYTES + 1));
+		// The response headers come from the stream itself, on every PHP version.
+		// $http_response_header exists only in the scope that called
+		// file_get_contents() and only where the name is written out (it is
+		// deprecated in 8.5 for that reason); http_get_last_response_headers()
+		// exists only since 8.4. With redirects the list holds every response.
+		$headers = stream_get_meta_data($stream)['wrapper_data'] ?? [];
+		fclose($stream);
 		// The last status line counts (after redirects).
 		$status = 0;
-		// http_get_last_response_headers() since PHP 8.4. The magic local
-		// variable is deprecated in 8.5 (at compile time, when the name is
-		// written out), hence the indirection for 8.2/8.3.
-		$legacy = 'http_response_header';
-		$headers = function_exists('http_get_last_response_headers')
-			? (http_get_last_response_headers() ?? [])
-			: ($$legacy ?? []);
-		foreach ($headers as $line) {
-			if (preg_match('~^HTTP/\S+\s+(\d{3})~', $line, $m)) {
+		foreach (is_array($headers) ? $headers : [] as $line) {
+			if (is_string($line) && preg_match('~^HTTP/\S+\s+(\d{3})~', $line, $m)) {
 				$status = (int)$m[1];
 			}
 		}
