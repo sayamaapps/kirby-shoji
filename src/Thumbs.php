@@ -11,9 +11,10 @@ use Closure;
  *
  * A fresh copy is served for 30 days, then fetched again; if that fails the
  * old copy stays. A failed first fetch is remembered for a day (a `.miss`
- * file that holds the address parameters it was made for), so a video without
- * a preview image does not make every page view ask the provider again. A
- * corrected parameter (a Vimeo hash) is asked for at once.
+ * file per set of address parameters, holding the parameters it was made for),
+ * so a video without a preview image does not make every page view ask the
+ * provider again, whichever other parameters the same video is embedded with.
+ * A corrected parameter (a Vimeo hash) is asked for at once.
  *
  * @package   Kirby Shoji
  * @author    Simon Räder
@@ -81,12 +82,13 @@ class Thumbs
 		// The miss belongs to the address parameters it was made with: a Vimeo hash that
 		// was corrected asks the provider again, the same one does not.
 		$missKey = Embed::encodeParams($embed->params);
+		$miss = $base . ($missKey === '' ? '' : '.' . substr(sha1($missKey), 0, 12)) . '.miss';
 
 		if ($cached !== null && $now - (int)filemtime($cached['file']) < self::MAX_AGE) {
 			return $cached;
 		}
-		if ($cached === null && is_file($base . '.miss') && $now - (int)filemtime($base . '.miss') < self::MISS_AGE &&
-			file_get_contents($base . '.miss') === $missKey) {
+		if ($cached === null && is_file($miss) && $now - (int)filemtime($miss) < self::MISS_AGE &&
+			file_get_contents($miss) === $missKey) {
 			return null;
 		}
 
@@ -96,7 +98,7 @@ class Thumbs
 				Quiet::run(fn () => touch($cached['file'], $now)); // try again in 30 days, keep showing the old one
 				return $cached;
 			}
-			$this->write($base . '.miss', $missKey, $now);
+			$this->write($miss, $missKey, $now);
 			return null;
 		}
 
@@ -106,7 +108,7 @@ class Thumbs
 				Quiet::run(fn () => unlink($base . '.' . $other)); // most are missing
 			}
 		}
-		Quiet::run(fn () => unlink($base . '.miss'));
+		Quiet::run(fn () => unlink($miss));
 		if (!$this->write($base . '.' . $extension, $bytes, $now)) {
 			error_log('Shoji: cannot write the preview image cache in ' . $this->directory);
 			return null;
