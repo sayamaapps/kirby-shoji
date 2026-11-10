@@ -11,6 +11,22 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## Unreleased
+
+### Fixed
+
+- **A failed preview image fetch holds the provider back for the full day, also
+  when the video is embedded with other parameters.** The one-day memory of a
+  failed first fetch was a single `.miss` file per video that held the address
+  parameters of the last failure. A request for the same video with other
+  parameters (a Vimeo hash, or any other parameter) did not match it, asked the
+  provider again before the day was over and replaced the file with its own
+  parameters, so the next request of the first kind asked again too. Each set
+  of parameters now has its own `.miss` file (`<id>.miss` without parameters,
+  `<id>.<hash>.miss` with), so none shortens another's day. A corrected Vimeo
+  hash is still asked for at once. `.miss` files written by earlier versions
+  with parameters are no longer read; they do no harm and may be deleted.
+
 ## [1.5.2] — 2026-11-03
 
 ### Fixed

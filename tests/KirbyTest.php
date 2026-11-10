@@ -283,7 +283,7 @@ final class KirbyTest extends ShojiTestCase
 		};
 		$hashThumbs = new \Sayamaapps\Shoji\Thumbs($tmp . '/hash-thumbs', $hashFetch);
 		holds($hashThumbs->get($wrongHash) === null, 'wrong hash: no preview image');
-		holds(is_file($tmp . '/hash-thumbs/vimeo/76979871.miss'), 'wrong hash: miss remembered');
+		holds(glob($tmp . '/hash-thumbs/vimeo/76979871.*.miss') !== [], 'wrong hash: miss remembered');
 		$hashAsked = [];
 		$hashThumbs->get($wrongHash);
 		expect([], $hashAsked, 'wrong hash again: no new fetch within a day');

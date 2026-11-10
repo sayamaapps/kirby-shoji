@@ -1,5 +1,6 @@
 <?php
 
+use Kirby\Cms\App;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Sayamaapps\Shoji\Embed;
 use Sayamaapps\Shoji\Thumbs;
@@ -12,6 +13,19 @@ use Sayamaapps\Shoji\Thumbs;
 #[CoversClass(Thumbs::class)]
 final class ThumbsTest extends ShojiTestCase
 {
+	/** @return array{0:Thumbs,1:array{count:int},2:Embed,3:string} */
+	private function failingThumbs(array $params = []): array
+	{
+		[$kirby, $tmp] = $this->site();
+		$calls = new stdClass();
+		$calls->count = 0;
+		$thumbs = new Thumbs($tmp . '/thumbs', function (string $url) use ($calls): array {
+			$calls->count++;
+			return [404, ''];
+		});
+		return [$thumbs, $calls, Embed::make($kirby, 'vimeo', '76979871', $params), $tmp];
+	}
+
 	public function testAFailedFirstFetchIsRememberedForADay(): void
 	{
 		$asked = [];
@@ -29,6 +43,55 @@ final class ThumbsTest extends ShojiTestCase
 		$asked = [];
 		$this->assertNull($thumbs->get($embed), 'still no preview image');
 		$this->assertSame([], $asked, 'no new fetch within a day after a miss');
+	}
+
+	public function testAFailedRefreshOfAnOldCopyKeepsItAndBlocksTheProviderFor30Days(): void
+	{
+		[$thumbs, $calls, $embed, $tmp] = $this->failingThumbs();
+		$start = 1_800_000_000;
+		$old = $tmp . '/thumbs/vimeo/76979871.jpg';
+		mkdir(dirname($old), 0755, true);
+		file_put_contents($old, "\xFF\xD8\xFF\xE0" . str_repeat('x', 2000));
+		touch($old, $start - Thumbs::MAX_AGE - 10);
+
+		$this->assertSame($old, $thumbs->get($embed, $start)['file'] ?? null, 'the old copy is shown');
+		$this->assertSame(1, $calls->count, 'the refresh was tried once');
+
+		clearstatcache(); // the next request is a new process in production
+		$this->assertSame($old, $thumbs->get($embed, $start + Thumbs::MAX_AGE - 1)['file'] ?? null);
+		$this->assertSame(1, $calls->count, 'no new refresh within 30 days of the failed one');
+	}
+
+	public function testAMissBlocksTheProviderForTheFullDay(): void
+	{
+		[$thumbs, $calls, $embed] = $this->failingThumbs();
+		$start = 1_800_000_000;
+
+		$this->assertNull($thumbs->get($embed, $start));
+		$this->assertSame(1, $calls->count, 'the first request asks the provider');
+
+		foreach ([3600, 43200, 86399] as $offset) {
+			$this->assertNull($thumbs->get($embed, $start + $offset));
+			$this->assertSame(1, $calls->count, "no new fetch $offset seconds after the miss");
+		}
+
+		$this->assertNull($thumbs->get($embed, $start + 86401));
+		$this->assertSame(2, $calls->count, 'a day and a second after the miss the provider is asked again');
+	}
+
+	public function testAMissForOneVariantIsNotShortenedByAnotherVariant(): void
+	{
+		[$thumbs, $calls, $plain] = $this->failingThumbs();
+		$withHash = Embed::make(App::instance(), 'vimeo', '76979871', ['h' => 'abcdef12']);
+		$start = 1_800_000_000;
+
+		$thumbs->get($plain, $start);
+		$thumbs->get($withHash, $start + 3600);
+		$this->assertSame(2, $calls->count, 'each variant is asked once');
+
+		$thumbs->get($plain, $start + 7200);
+		$thumbs->get($withHash, $start + 7200);
+		$this->assertSame(2, $calls->count, 'the other variant did not wipe the miss, neither one asks again within a day');
 	}
 
 	public function testCandidatesAreFetchedInOrderAndTheImageIsCached(): void
