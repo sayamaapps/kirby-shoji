@@ -240,7 +240,7 @@ class Api
 		return Html::figure(
 			[$content],
 			$tag->attr('caption'),
-			['class' => $tag->attr('class') ?? 'video', 'style' => $tag->attr('style')]
+			['class' => $tag->attr('class') ?? 'video']
 		);
 	}
 
