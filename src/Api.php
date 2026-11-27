@@ -233,6 +233,12 @@ class Api
 	 */
 	public static function tag(KirbyTag $tag): string
 	{
+		// `style` is read as an attribute (config/tags.php), so it never becomes
+		// part of the address or the caption, and dropped before anything prints
+		// it, Kirby 5's own tag included: it let content set CSS on the page.
+		/** @psalm-suppress UndefinedMagicPropertyFetch KirbyTag keeps its attributes as dynamic properties. */
+		unset($tag->style, $tag->attrs['style']);
+
 		$content = self::video($tag->kirby(), (string)$tag->value);
 		if ($content === null) {
 			return self::coreTags($tag->kirby())['video']['html']($tag);

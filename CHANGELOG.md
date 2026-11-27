@@ -20,10 +20,10 @@ All notable changes to this project are documented here. Versions follow
 
 ### Fixed
 
-- The `(video:)` tag no longer has the attribute `style`, as in Kirby 6: it let
-  content set CSS on the page. This applies on Kirby 5 too. A `style:` left in a
-  tag is no attribute any more; its text stays with the value before it (a caption
-  shows it).
+- The `(video:)` tag no longer prints `style`, as in Kirby 6: it let content set
+  CSS on the page. Shoji still reads `style:` as an attribute and drops its value,
+  so a tag shows its video and caption wherever `style:` stands in it. This applies
+  on Kirby 5 too: a layout that relied on `style:` loses it; use `class:` instead.
 
 ## [1.5.3] — 2026-11-10
 
