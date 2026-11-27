@@ -11,6 +11,20 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [Unreleased]
+
+### Added
+
+- Kirby 6 is supported next to Kirby 5 (`getkirby/cms` `^5.0 || ^6.0`). Kirby 6 itself
+  needs PHP 8.3 or newer; the plugin still runs on PHP 8.2 with Kirby 5.
+
+### Fixed
+
+- The `(video:)` tag no longer prints `style`, as in Kirby 6: it let content set
+  CSS on the page. Shoji still reads `style:` as an attribute and drops its value,
+  so a tag shows its video and caption wherever `style:` stands in it. This applies
+  on Kirby 5 too: a layout that relied on `style:` loses it; use `class:` instead.
+
 ## [1.5.3] — 2026-11-10
 
 ### Fixed

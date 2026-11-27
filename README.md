@@ -2,7 +2,7 @@
 
 Click-to-load embeds and forms for [Kirby CMS](https://getkirby.com).
 
-**Kirby 5 · PHP 8.2 to 8.5 · Plugin name `sayamaapps/shoji`.** Kirby 6 is tested in CI as a pre-release only. Versions and their changes: [Releases](https://github.com/sayamaapps/kirby-shoji/releases) and [CHANGELOG.md](CHANGELOG.md).
+**Kirby 5 and 6 · PHP 8.2 to 8.5 · Plugin name `sayamaapps/shoji`.** Versions and their changes: [Releases](https://github.com/sayamaapps/kirby-shoji/releases) and [CHANGELOG.md](CHANGELOG.md).
 
 Shoji keeps YouTube and Vimeo videos, Digistore24 order forms and HTML forms such as Brevo's behind a placeholder until the visitor clicks. The placeholder shows a preview image and a button; the provider's content loads only after the click. Until then, the page contacts only your own server.
 
@@ -17,7 +17,7 @@ Shoji keeps YouTube and Vimeo videos, Digistore24 order forms and HTML forms suc
 
 ## Requirements
 
-- PHP 8.2–8.5 and Kirby 5.
+- PHP 8.2–8.5 and Kirby 5 or 6; Kirby 6 needs PHP 8.3 or newer.
 - Kirby's `storage` root (recommended) or a writable `site/storage`, for the secret and the preview cache. If neither is writable, set `sayamaapps.shoji.secret`, or placeholders will not open.
 - `ext-curl` is optional; without it the preview images are fetched with PHP's stream wrapper.
 
